@@ -5,10 +5,14 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import org.whispersystems.curve25519.Curve25519;
+import org.whispersystems.curve25519.Curve25519KeyPair;
+
 public class CertificateAuthority {
     private ServerSocket server;
 
-    private static String certificatePublicKey = "This is my public key";
+    private static Curve25519 cipher = Curve25519.getInstance(Curve25519.BEST);
+    private static Curve25519KeyPair keyPair;
 
     public static void main(String[] args) {
         System.out.println("CA starts.");
@@ -18,6 +22,7 @@ public class CertificateAuthority {
 
     private CertificateAuthority() {
         try {
+            keyPair = cipher.generateKeyPair();
             server = new ServerSocket(Common.CA_PORT);
 
             while (!server.isClosed()) {
@@ -41,11 +46,30 @@ public class CertificateAuthority {
         PrintWriter clientOut = new PrintWriter(client.getOutputStream(), true);
 
         String initialResponse = clientReader.readLine();
-        System.out.println("Client says: " + initialResponse);
 
-        clientOut.println(certificatePublicKey);
+        if (initialResponse.equals("Get Certificate"))
+            giveCertificate(clientReader, clientOut);
+        else
+            clientOut.println(keyPair.getPublicKey());
+
         clientOut.flush();
         socket.close();
+
+    }
+
+    public void giveCertificate(BufferedReader clientReader, PrintWriter clientOut) throws IOException {
+
+        System.out.println("Certificate Request.");
+
+        String secondaryResponse = clientReader.readLine();
+
+        System.out.println("got public key " + secondaryResponse);
+        String certificate = cipher.calculateSignature(keyPair.getPrivateKey(), secondaryResponse.getBytes())
+                .toString();
+
+        clientOut.println(certificate);
+        clientOut.flush();
+        System.out.println("Certificate created: " + certificate);
 
     }
 

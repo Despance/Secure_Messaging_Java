@@ -3,6 +3,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.security.KeyPair;
+import java.security.cert.Certificate;
+
+import org.whispersystems.curve25519.Curve25519;
+import org.whispersystems.curve25519.Curve25519KeyPair;
 
 public class Client {
 
@@ -16,11 +21,15 @@ public class Client {
     private String certificateString = "This is my certificate";
     private PrintWriter CAOut;
     private BufferedReader CAReader;
+    private Curve25519KeyPair keyPair;
+
+    private Curve25519 cipher = Curve25519.getInstance(Curve25519.BEST);
 
     public static void main(String[] args) {
         System.out.println("Client starts.");
 
-        new Client("localhost", "localhost", "This is my certificate from client");
+        new Client("localhost", "localhost", null);
+
     }
 
     private Client(String serverIP, String CAIP, String certificateString) {
@@ -29,10 +38,31 @@ public class Client {
         this.certificateString = certificateString;
 
         try {
+            if (certificateString == null)
+                this.certificateString = getCertificate();
+
+            System.out.println("Certificate: " + this.certificateString);
             connect();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+    }
+
+    private String getCertificate() throws IOException {
+        keyPair = cipher.generateKeyPair();
+
+        cerfificateAuthority = new Socket(CAIP, Common.CA_PORT);
+        CAOut = new PrintWriter(cerfificateAuthority.getOutputStream(), true);
+        CAReader = new BufferedReader(new InputStreamReader(cerfificateAuthority.getInputStream()));
+
+        CAOut.println("Get Certificate");
+        CAOut.println(keyPair.getPublicKey());
+        CAOut.flush();
+
+        String ceString = CAReader.readLine();
+
+        return ceString;
 
     }
 
