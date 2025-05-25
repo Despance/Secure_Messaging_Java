@@ -4,8 +4,9 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.Signature;
 
 public class Server {
 
@@ -17,7 +18,7 @@ public class Server {
     private Socket cerfificateAuthority;
     private String CAIP;
 
-    private String certificateString = "This is my certificate";
+    private Certificate certificate;
     private PrintWriter CAOut;
     private BufferedReader CAReader;
     private RSA rsa;
@@ -26,21 +27,19 @@ public class Server {
 
         System.out.println("Server starts.");
 
-        new Server("localhost", null);
+        new Server("localhost");
 
     }
 
-    private Server(String CAIP, String certificateString) {
+    private Server(String CAIP) {
         this.CAIP = CAIP;
-        this.certificateString = certificateString;
 
         try {
             server = new ServerSocket(Common.PORT_NUMBER);
 
-            if (certificateString == null)
-                this.certificateString = getCertificate();
+            this.certificate = getCertificate();
 
-            System.out.println("Certificate: " + this.certificateString);
+            System.out.println(certificate.toString());
 
             acceptConnection(server);
         } catch (IOException e) {
@@ -49,7 +48,7 @@ public class Server {
 
     }
 
-    private String getCertificate() throws IOException {
+    private Certificate getCertificate() throws IOException {
         rsa = new RSA();
 
         System.out.println("My private: " + rsa.getPrivateKey());
@@ -65,7 +64,9 @@ public class Server {
 
         String ceString = CAReader.readLine();
 
-        return new String(Base64.getDecoder().decode(ceString), StandardCharsets.UTF_8);
+        Certificate cert = new Certificate(ceString);
+
+        return cert;
 
     }
 
@@ -78,7 +79,7 @@ public class Server {
         String initialResponse = clientReader.readLine();
         System.out.println("Client says: " + initialResponse);
 
-        clientOut.println(certificateString + " Nonce: " + Common.generateNonce(16));
+        clientOut.println(certificate.toString() + " Nonce: " + Common.generateNonce(16));
         clientOut.flush();
 
         cerfificateAuthority = new Socket(CAIP, Common.CA_PORT);
@@ -88,7 +89,9 @@ public class Server {
         CAOut.flush();
 
         String CAResponse = CAReader.readLine();
-        System.out.println("CA says: " + CAResponse);
+        PublicKey sigKey = RSA.generatePublicKeyFromString(CAResponse);
+
+        System.out.println("CA says my sig is valid: " + certificate.checkSignature(sigKey));
 
         cerfificateAuthority.close();
 
