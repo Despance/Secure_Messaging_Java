@@ -4,15 +4,12 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-
-import org.whispersystems.curve25519.Curve25519;
-import org.whispersystems.curve25519.Curve25519KeyPair;
+import java.security.PublicKey;
+import java.util.Base64;
 
 public class CertificateAuthority {
     private ServerSocket server;
-
-    private static Curve25519 cipher = Curve25519.getInstance(Curve25519.BEST);
-    private static Curve25519KeyPair keyPair;
+    private RSA rsa;
 
     public static void main(String[] args) {
         System.out.println("CA starts.");
@@ -22,7 +19,11 @@ public class CertificateAuthority {
 
     private CertificateAuthority() {
         try {
-            keyPair = cipher.generateKeyPair();
+            rsa = new RSA();
+
+            System.out.println("My private: " + rsa.getPrivateKey());
+            System.out.println("My public: " + rsa.getPublicKey());
+
             server = new ServerSocket(Common.CA_PORT);
 
             while (!server.isClosed()) {
@@ -50,7 +51,7 @@ public class CertificateAuthority {
         if (initialResponse.equals("Get Certificate"))
             giveCertificate(clientReader, clientOut);
         else
-            clientOut.println(keyPair.getPublicKey());
+            clientOut.println(RSA.ToEncoded(rsa.getPublicKey()));
 
         clientOut.flush();
         socket.close();
@@ -59,17 +60,21 @@ public class CertificateAuthority {
 
     public void giveCertificate(BufferedReader clientReader, PrintWriter clientOut) throws IOException {
 
+        // Cant proceed because of the size limit
+
         System.out.println("Certificate Request.");
 
         String secondaryResponse = clientReader.readLine();
 
-        System.out.println("got public key " + secondaryResponse);
-        String certificate = cipher.calculateSignature(keyPair.getPrivateKey(), secondaryResponse.getBytes())
-                .toString();
+        PublicKey pkey = RSA.generatePublicKeyFromString(secondaryResponse);
 
-        clientOut.println(certificate);
+        System.out.println("got public key " + pkey);
+
+        String certificate = RSA.encrypt(new String(pkey.getEncoded()), rsa.getPrivateKey());
+
+        clientOut.println(Base64.getEncoder().encode(certificate.getBytes()));
         clientOut.flush();
-        System.out.println("Certificate created: " + certificate);
+        System.out.println("Certificate created: " + Base64.getEncoder().encode(certificate.getBytes()));
 
     }
 

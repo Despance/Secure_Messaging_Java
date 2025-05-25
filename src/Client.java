@@ -6,9 +6,6 @@ import java.net.Socket;
 import java.security.KeyPair;
 import java.security.cert.Certificate;
 
-import org.whispersystems.curve25519.Curve25519;
-import org.whispersystems.curve25519.Curve25519KeyPair;
-
 public class Client {
 
     private Socket server;
@@ -21,9 +18,7 @@ public class Client {
     private String certificateString = "This is my certificate";
     private PrintWriter CAOut;
     private BufferedReader CAReader;
-    private Curve25519KeyPair keyPair;
-
-    private Curve25519 cipher = Curve25519.getInstance(Curve25519.BEST);
+    private RSA rsa;
 
     public static void main(String[] args) {
         System.out.println("Client starts.");
@@ -36,6 +31,10 @@ public class Client {
         this.CAIP = CAIP;
         this.serverIP = serverIP;
         this.certificateString = certificateString;
+        rsa = new RSA();
+
+        System.out.println("My private: " + rsa.getPrivateKey());
+        System.out.println("My public: " + rsa.getPublicKey());
 
         try {
             if (certificateString == null)
@@ -50,14 +49,13 @@ public class Client {
     }
 
     private String getCertificate() throws IOException {
-        keyPair = cipher.generateKeyPair();
 
         cerfificateAuthority = new Socket(CAIP, Common.CA_PORT);
         CAOut = new PrintWriter(cerfificateAuthority.getOutputStream(), true);
         CAReader = new BufferedReader(new InputStreamReader(cerfificateAuthority.getInputStream()));
 
         CAOut.println("Get Certificate");
-        CAOut.println(keyPair.getPublicKey());
+        CAOut.println(RSA.ToEncoded(rsa.getPublicKey()));
         CAOut.flush();
 
         String ceString = CAReader.readLine();
