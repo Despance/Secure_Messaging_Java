@@ -5,7 +5,6 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.PublicKey;
-import java.util.Base64;
 
 public class CertificateAuthority {
     private ServerSocket server;
@@ -70,11 +69,15 @@ public class CertificateAuthority {
 
         System.out.println("got public key " + pkey);
 
-        String certificate = RSA.encrypt(new String(pkey.getEncoded()), rsa.getPrivateKey());
+        Certificate cert = new Certificate(null, pkey, null);
 
-        clientOut.println(Base64.getEncoder().encode(certificate.getBytes()));
+        String signature = RSA.signData(cert.getPublicKey().getEncoded(), rsa.getPrivateKey());
+
+        cert.setSignature(signature);
+
+        clientOut.println(cert.toString());
         clientOut.flush();
-        System.out.println("Certificate created: " + Base64.getEncoder().encode(certificate.getBytes()));
+        System.out.println("Certificate created: " + cert.toString());
 
     }
 
