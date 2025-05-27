@@ -19,10 +19,6 @@ public class CertificateAuthority {
     private CertificateAuthority() {
         try {
             rsa = new RSA();
-
-            System.out.println("My private: " + rsa.getPrivateKey());
-            System.out.println("My public: " + rsa.getPublicKey());
-
             server = new ServerSocket(Common.CA_PORT);
 
             while (!server.isClosed()) {
@@ -49,8 +45,8 @@ public class CertificateAuthority {
 
         if (initialResponse.equals("Get Certificate"))
             giveCertificate(clientReader, clientOut);
-        else
-            clientOut.println(RSA.ToEncoded(rsa.getPublicKey()));
+
+        clientOut.println(RSA.ToEncoded(rsa.getPublicKey()));
 
         clientOut.flush();
         socket.close();
@@ -59,16 +55,11 @@ public class CertificateAuthority {
 
     public void giveCertificate(BufferedReader clientReader, PrintWriter clientOut) throws IOException {
 
-        // Cant proceed because of the size limit
-
         System.out.println("Certificate Request.");
 
         String secondaryResponse = clientReader.readLine();
 
         PublicKey pkey = RSA.generatePublicKeyFromString(secondaryResponse);
-
-        System.out.println("got public key " + pkey);
-
         Certificate cert = new Certificate(null, pkey, null);
 
         String signature = RSA.signData(cert.getPublicKey().getEncoded(), rsa.getPrivateKey());
@@ -77,6 +68,7 @@ public class CertificateAuthority {
 
         clientOut.println(cert.toString());
         clientOut.flush();
+
         System.out.println("Certificate created: " + cert.toString());
 
     }
