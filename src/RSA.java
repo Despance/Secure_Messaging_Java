@@ -1,4 +1,3 @@
-import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -48,7 +47,7 @@ public class RSA {
 
             byte[] encryptedBytes = cipher.doFinal(message.getBytes());
 
-            return new String(encryptedBytes, StandardCharsets.UTF_8);
+            return Base64.getEncoder().encodeToString(encryptedBytes);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -73,11 +72,12 @@ public class RSA {
     public static String decrypt(String cipherText, Key privateKey) {
 
         try {
+            byte[] decoded = Base64.getDecoder().decode(cipherText);
             cipher.init(Cipher.DECRYPT_MODE, privateKey);
 
-            byte[] decryptedBytes = cipher.doFinal(cipherText.getBytes());
+            byte[] decryptedBytes = cipher.doFinal(decoded);
 
-            return new String(decryptedBytes, StandardCharsets.UTF_8);
+            return new String(decryptedBytes);
         } catch (Exception e) {
             e.printStackTrace();
         }

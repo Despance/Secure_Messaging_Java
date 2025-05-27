@@ -39,6 +39,11 @@ public class Certificate {
 
     public Certificate(String data) {
 
+        int startIndexOfCert = data.indexOf("Certificate:{ ");
+        int endIndexOfCert = data.indexOf("}");
+
+        data = data.substring(startIndexOfCert, endIndexOfCert + 1);
+
         String[] strings = data.split(" , ");
 
         for (String string : strings) {
