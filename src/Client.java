@@ -74,13 +74,15 @@ public class Client {
         serverOut = new PrintWriter(server.getOutputStream(), true);
         serverReader = new BufferedReader(new InputStreamReader(server.getInputStream()));
 
-        serverOut.println(certificate.toString());
+        byte[] clientNonce = Common.generateNonce();
+        serverOut.println(certificate.toString() + " nonce: " + Base64.getEncoder().encodeToString(clientNonce));
         serverOut.flush();
 
         String initialResponse = serverReader.readLine();
         System.out.println("Server says: " + initialResponse);
 
         Certificate serverCertificateTemp = new Certificate(initialResponse);
+        byte[] serverNonce = Common.getNonce(initialResponse);
 
         cerfificateAuthority = new Socket(CAIP, Common.CA_PORT);
         CAOut = new PrintWriter(cerfificateAuthority.getOutputStream(), true);
@@ -97,6 +99,26 @@ public class Client {
             System.out.println("Server certificate is valid.");
         } else
             System.out.println("Server certificate is fraud!!");
+
+
+        // client generate premaster secret
+        byte[] premasterSecret = KeyGenerationHelper.generatePremasterSecret();
+        // encrypt it with server public key RSA and send it to server
+        String encryptedPremasterSecret = RSA.encrypt(Base64.getEncoder().encodeToString(premasterSecret), serverCertificate.getPublicKey());
+        serverOut.println(encryptedPremasterSecret);
+        serverOut.flush();
+        // generate master secret with premaster secret
+        byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
+        // generate keys using master secret
+        Keys keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+        // send message encrypted with AES to server
+        String tmpStr = "moin ik bins der client";
+        AES aes = new AES();
+        String encryptedMessage = aes.encrypt(tmpStr.getBytes(), keys.clientKey);
+        System.out.println("Encrypted message: " + encryptedMessage);
+        System.out.println("client sendgin encrypted message");
+        serverOut.println(encryptedMessage);
+        serverOut.flush();
 
         cerfificateAuthority.close();
 

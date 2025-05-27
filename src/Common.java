@@ -21,4 +21,8 @@ public class Common {
         return generateNonce(NONCE_BYTE_LENGTH);
     }
 
+    public static byte[] getNonce(String message){
+        return Base64.getDecoder().decode( message.substring(message.indexOf("nonce: ") + 7) );
+    }
+
 }

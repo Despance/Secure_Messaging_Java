@@ -81,10 +81,12 @@ public class Server {
 
         String initialResponse = clientReader.readLine();
 
-        clientOut.println(certificate.toString());
+        byte[] serverNonce = Common.generateNonce();
+        clientOut.println(certificate.toString() + "nonce: " + Base64.getEncoder().encodeToString(serverNonce));
         clientOut.flush();
 
         Certificate clientCertificateTemp = new Certificate(initialResponse);
+        byte[] clientNonce = Common.getNonce(initialResponse);
 
         cerfificateAuthority = new Socket(CAIP, Common.CA_PORT);
         CAOut = new PrintWriter(cerfificateAuthority.getOutputStream(), true);
@@ -100,6 +102,23 @@ public class Server {
             System.out.println("Client certificate is valid.");
         } else
             System.out.println("Client certificate is fraud!!");
+
+        // recieve the premaster secret
+        String encryptedPremasterSecret = clientReader.readLine();
+        String premasterSecretString = RSA.decrypt(encryptedPremasterSecret, rsa.getPrivateKey());
+        byte[] premasterSecret = Base64.getDecoder().decode(premasterSecretString);
+        // generate master secret
+        byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
+        // generate keys
+        Keys keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+        // wait for client message
+        String encryptedClientMessage = clientReader.readLine();
+        // decrypt the message using the client key
+        AES aes = new AES();
+        String decryptedMessage = aes.decrypt(encryptedClientMessage, keys.clientKey);
+        System.out.println("Decrypted message from client: " + decryptedMessage);
+        // respond to client
+        
 
         cerfificateAuthority.close();
 

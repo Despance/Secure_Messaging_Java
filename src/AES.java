@@ -32,8 +32,9 @@ public class AES {
         return null;
     }
 
-    public String decrypt(String encryptedMessage, SecretKey secretKey) {
+    public String decrypt(String encryptedMessage, byte[] secretKeyByte) {
         try {
+            SecretKey secretKey = new SecretKeySpec(secretKeyByte, "AES");
             cipher.init(Cipher.DECRYPT_MODE, secretKey);
             byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedMessage));
             return new String(decryptedBytes, StandardCharsets.UTF_8);
