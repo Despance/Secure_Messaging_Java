@@ -9,10 +9,16 @@ public class Common {
     public static final int PORT_NUMBER = 25565;
     public static final int CA_PORT = 25566;
 
-    public static String generateNonce(int byteLength) {
+    private static final int NONCE_BYTE_LENGTH = 32;
+
+    public static byte[] generateNonce(int byteLength) {
         byte[] randomBytes = new byte[byteLength];
         secureRandom.nextBytes(randomBytes);
-        return base64Encoder.encodeToString(randomBytes);
+        return randomBytes;
+    }
+
+    public static byte[] generateNonce(){
+        return generateNonce(NONCE_BYTE_LENGTH);
     }
 
 }

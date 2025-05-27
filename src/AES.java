@@ -3,6 +3,7 @@ import java.util.Base64;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 
 public class AES {
@@ -19,8 +20,9 @@ public class AES {
         }
     }
 
-    public String encrypt(byte[] message, SecretKey secretKey) {
+    public String encrypt(byte[] message, byte[] secretKeyByte) {
         try {
+            SecretKey secretKey = new SecretKeySpec(secretKeyByte, "AES");
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
             byte[] encryptedBytes = cipher.doFinal(message);
             return Base64.getEncoder().encodeToString(encryptedBytes);

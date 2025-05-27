@@ -4,9 +4,13 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.util.Base64;
+
+import javax.crypto.spec.SecretKeySpec;
 
 public class Server {
 
@@ -79,7 +83,8 @@ public class Server {
         String initialResponse = clientReader.readLine();
         System.out.println("Client says: " + initialResponse);
 
-        clientOut.println(certificate.toString() + " Nonce: " + Common.generateNonce(16));
+        byte[] serverNonce = Common.generateNonce();
+        clientOut.println(certificate.toString() + " Nonce: " + Base64.getEncoder().encodeToString(serverNonce));
         clientOut.flush();
 
         cerfificateAuthority = new Socket(CAIP, Common.CA_PORT);
@@ -92,6 +97,12 @@ public class Server {
         PublicKey sigKey = RSA.generatePublicKeyFromString(CAResponse);
 
         System.out.println("CA says my sig is valid: " + certificate.checkSignature(sigKey));
+        
+        // get RSA encrypted premaster secret from client
+        // use private key to decrypt it
+        // genenrate master secret and then keys from that
+        // listen for messages from client, decrypt using AES and send responses(encypted with aes)
+        // do this listten and send in a loop
 
         cerfificateAuthority.close();
 
