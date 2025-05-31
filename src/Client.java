@@ -22,6 +22,9 @@ public class Client {
     private Certificate certificate;
     private RSA rsa;
 
+    private Keys keys;
+    private AES aes;
+
     public static void main(String[] args) {
         System.out.println("Client starts.");
 
@@ -110,10 +113,10 @@ public class Client {
         // generate master secret with premaster secret
         byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
         // generate keys using master secret
-        Keys keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+        keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
         // send message encrypted with AES to server
         String tmpStr = "moin ik bins der client";
-        AES aes = new AES();
+        aes = new AES();
         String encryptedMessage = aes.encrypt(tmpStr.getBytes(), keys.clientKey);
         System.out.println("Encrypted message: " + encryptedMessage);
         System.out.println("client sendgin encrypted message");
@@ -122,6 +125,13 @@ public class Client {
 
         cerfificateAuthority.close();
 
+    }
+
+    private void sendMessage(String message, MessageType type) {
+        String messageWithHmac = Common.createMessageForm(type , message, keys.clientMacKey);
+        String encryptedMessage = aes.encrypt(messageWithHmac.getBytes(), keys.clientKey);
+        serverOut.println(encryptedMessage);
+        serverOut.flush();
     }
 
 }
