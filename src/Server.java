@@ -111,14 +111,14 @@ public class Server {
         byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
         // generate keys
         Keys keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
-        // wait for client message
-        String encryptedClientMessage = clientReader.readLine();
-        // decrypt the message using the client key
         AES aes = new AES();
-        String decryptedMessage = aes.decrypt(encryptedClientMessage, keys.clientKey);
-        System.out.println("Decrypted message from client: " + decryptedMessage);
-        // respond to client
         
+        // get client message
+        MessageHelper.receiveMessage(aes, keys.clientKey, keys.clientMacKey, clientReader);
+        // send ack to client
+        String ackMessage = "ACK";
+        MessageHelper.sendMessage(ackMessage, MessageType.Ack, aes, keys.serverKey, keys.serverMacKey, clientOut);
+
 
         cerfificateAuthority.close();
 

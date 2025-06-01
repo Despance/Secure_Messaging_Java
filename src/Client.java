@@ -114,24 +114,20 @@ public class Client {
         byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
         // generate keys using master secret
         keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+
+
         // send message encrypted with AES to server
         String tmpStr = "moin ik bins der client";
         aes = new AES();
-        String encryptedMessage = aes.encrypt(tmpStr.getBytes(), keys.clientKey);
-        System.out.println("Encrypted message: " + encryptedMessage);
-        System.out.println("client sendgin encrypted message");
-        serverOut.println(encryptedMessage);
-        serverOut.flush();
+        // send message
+        MessageHelper.sendMessage(tmpStr, MessageType.Text, aes, keys.clientKey, keys.clientMacKey, serverOut);
+        // receive ack from server
+        MessageHelper.receiveMessage(aes, keys.serverKey, keys.serverMacKey, serverReader);
 
         cerfificateAuthority.close();
 
     }
 
-    private void sendMessage(String message, MessageType type) {
-        String messageWithHmac = Common.createMessageForm(type , message, keys.clientMacKey);
-        String encryptedMessage = aes.encrypt(messageWithHmac.getBytes(), keys.clientKey);
-        serverOut.println(encryptedMessage);
-        serverOut.flush();
-    }
 
+    
 }

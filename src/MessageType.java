@@ -1,6 +1,7 @@
 public enum MessageType {
     Video,
     Image,
-    Text
+    Text,
+    Ack
     
 }
