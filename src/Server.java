@@ -107,6 +107,10 @@ public class Server {
         } else
             System.out.println("Client certificate is fraud!!");
 
+        generateKeys(clientNonce, serverNonce);
+    }
+
+    private void generateKeys(byte[] clientNonce, byte[] serverNonce) throws IOException {
         // recieve the premaster secret
         String encryptedPremasterSecret = clientReader.readLine();
         String premasterSecretString = RSA.decrypt(encryptedPremasterSecret, rsa.getPrivateKey());
@@ -115,11 +119,20 @@ public class Server {
         byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
         // generate keys
         keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
-        aes = new AES();
-        
-        
     }
 
+    private void updateKeys(MessageHelper messageHelper) throws IOException{
+        // receive the nonce from client
+        String clientMsg = messageHelper.receiveMessage();
+        byte[] clientNonce = Base64.getDecoder().decode(messageHelper.getMessageContent(clientMsg));
+        // generate new server nonce and send it to the client
+        byte[] serverNonce = Common.generateNonce();
+        String serverNonceString = Base64.getEncoder().encodeToString(serverNonce);
+        messageHelper.sendMessage(serverNonceString, "nonce.txt", MessageType.Nonce);
+        // generate new keys
+        generateKeys(clientNonce, serverNonce);
+        messageHelper.updateKeys(keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey);
+    }
 
     private void startCommunication() throws IOException{
         MessageHelper messageHelper = new MessageHelper(aes, keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey, clientOut, clientReader);
@@ -129,5 +142,11 @@ public class Server {
         // send ack to client
         String ackMessage = "ACK";
         messageHelper.sendMessage(ackMessage, "ack.txt", MessageType.Ack);
+
+        updateKeys(messageHelper);
+
+        messageHelper.receiveMessage();
+        // send ack to client
+        messageHelper.sendMessage("ACK2", "ack2.txt", MessageType.Ack);
     }
 }

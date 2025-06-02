@@ -106,7 +106,11 @@ public class Client {
         } else
             System.out.println("Server certificate is fraud!!");
 
+        generateKeys(clientNonce, serverNonce);
 
+    }
+
+    private void generateKeys(byte[] clientNonce, byte[] serverNonce) throws IOException{
         // client generate premaster secret
         byte[] premasterSecret = KeyGenerationHelper.generatePremasterSecret();
         // encrypt it with server public key RSA and send it to server
@@ -117,6 +121,19 @@ public class Client {
         byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
         // generate keys using master secret
         keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+    }
+
+    private void updateKeys(MessageHelper messageHelper) throws IOException{
+        // create new client nonce and send it to the server
+        byte[] clientNonce = Common.generateNonce();
+        String clientNonceString = Base64.getEncoder().encodeToString(clientNonce);
+        messageHelper.sendMessage(clientNonceString, "Nonce.txt", MessageType.Nonce);
+        // receive server nonce
+        String serverMsg = messageHelper.receiveMessage();
+        byte[] serverNonce = Base64.getDecoder().decode(messageHelper.getMessageContent(serverMsg));
+        // update keys
+        generateKeys(clientNonce, serverNonce);
+        messageHelper.updateKeys(keys.clientKey, keys.clientMacKey, keys.serverKey, keys.serverMacKey);
 
     }
 
@@ -126,6 +143,13 @@ public class Client {
         String tmpStr = "moin ik bins der client";
         // send message
         messageHelper.sendMessage(tmpStr, "hi.txt" ,MessageType.Text);
+        // receive ack from server
+        messageHelper.receiveMessage();
+
+        // update keys
+        updateKeys(messageHelper);
+
+        messageHelper.sendMessage("moin ik bins der client 2", "hi2.txt", MessageType.Text);
         // receive ack from server
         messageHelper.receiveMessage();
 
