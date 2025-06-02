@@ -4,11 +4,9 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
 import java.util.Base64;
 
-import javax.crypto.spec.SecretKeySpec;
 
 public class Server {
 
@@ -26,6 +24,9 @@ public class Server {
     private PrintWriter CAOut;
     private BufferedReader CAReader;
     private RSA rsa;
+    
+    private Keys keys;
+    private AES aes;
 
     public static void main(String[] args) {
 
@@ -41,12 +42,14 @@ public class Server {
         try {
             server = new ServerSocket(Common.PORT_NUMBER);
             rsa = new RSA();
+            aes = new AES();
 
             this.certificate = getCertificate();
 
             System.out.println(certificate.toString());
 
             secureSessionHello(server);
+            startCommunication();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -95,6 +98,7 @@ public class Server {
         CAOut.flush();
 
         String CAResponse = CAReader.readLine();
+        cerfificateAuthority.close();
         PublicKey caPkey = RSA.generatePublicKeyFromString(CAResponse);
 
         if (clientCertificateTemp.checkSignature(caPkey)) {
@@ -110,17 +114,20 @@ public class Server {
         // generate master secret
         byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
         // generate keys
-        Keys keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
-        AES aes = new AES();
+        keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+        aes = new AES();
+        
+        
+    }
+
+
+    private void startCommunication() throws IOException{
+        MessageHelper messageHelper = new MessageHelper(aes, keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey, clientOut, clientReader);
         
         // get client message
-        MessageHelper.receiveMessage(aes, keys.clientKey, keys.clientMacKey, clientReader);
+        messageHelper.receiveMessage();
         // send ack to client
         String ackMessage = "ACK";
-        MessageHelper.sendMessage(ackMessage, MessageType.Ack, aes, keys.serverKey, keys.serverMacKey, clientOut);
-
-
-        cerfificateAuthority.close();
-
+        messageHelper.sendMessage(ackMessage, "ack.txt", MessageType.Ack);
     }
 }

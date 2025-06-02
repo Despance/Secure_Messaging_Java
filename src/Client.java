@@ -36,6 +36,7 @@ public class Client {
         this.CAIP = CAIP;
         this.serverIP = serverIP;
         rsa = new RSA();
+        aes = new AES();
 
         System.out.println("My private: " + rsa.getPrivateKey());
         System.out.println("My public: " + rsa.getPublicKey());
@@ -44,6 +45,7 @@ public class Client {
             this.certificate = getCertificate();
 
             secureSessionHello();
+            startCommunication();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -95,6 +97,7 @@ public class Client {
         CAOut.flush();
 
         String CAResponse = CAReader.readLine();
+        cerfificateAuthority.close();
         PublicKey caPkey = RSA.generatePublicKeyFromString(CAResponse);
 
         if (serverCertificateTemp.checkSignature(caPkey)) {
@@ -115,16 +118,16 @@ public class Client {
         // generate keys using master secret
         keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
 
+    }
 
+    private void startCommunication() throws IOException{
+        MessageHelper messageHelper = new MessageHelper(aes, keys.clientKey, keys.clientMacKey, keys.serverKey, keys.serverMacKey, serverOut, serverReader);
         // send message encrypted with AES to server
         String tmpStr = "moin ik bins der client";
-        aes = new AES();
         // send message
-        MessageHelper.sendMessage(tmpStr, MessageType.Text, aes, keys.clientKey, keys.clientMacKey, serverOut);
+        messageHelper.sendMessage(tmpStr, "hi.txt" ,MessageType.Text);
         // receive ack from server
-        MessageHelper.receiveMessage(aes, keys.serverKey, keys.serverMacKey, serverReader);
-
-        cerfificateAuthority.close();
+        messageHelper.receiveMessage();
 
     }
 
