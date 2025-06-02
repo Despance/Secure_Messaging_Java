@@ -4,7 +4,11 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
+import java.util.Base64;
+
+import javax.crypto.spec.SecretKeySpec;
 
 public class Server {
 
@@ -77,10 +81,12 @@ public class Server {
 
         String initialResponse = clientReader.readLine();
 
-        clientOut.println(certificate.toString());
+        byte[] serverNonce = Common.generateNonce();
+        clientOut.println(certificate.toString() + "nonce: " + Base64.getEncoder().encodeToString(serverNonce));
         clientOut.flush();
 
         Certificate clientCertificateTemp = new Certificate(initialResponse);
+        byte[] clientNonce = Common.getNonce(initialResponse);
 
         cerfificateAuthority = new Socket(CAIP, Common.CA_PORT);
         CAOut = new PrintWriter(cerfificateAuthority.getOutputStream(), true);
@@ -96,6 +102,23 @@ public class Server {
             System.out.println("Client certificate is valid.");
         } else
             System.out.println("Client certificate is fraud!!");
+
+        // recieve the premaster secret
+        String encryptedPremasterSecret = clientReader.readLine();
+        String premasterSecretString = RSA.decrypt(encryptedPremasterSecret, rsa.getPrivateKey());
+        byte[] premasterSecret = Base64.getDecoder().decode(premasterSecretString);
+        // generate master secret
+        byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
+        // generate keys
+        Keys keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+        AES aes = new AES();
+        
+        // get client message
+        MessageHelper.receiveMessage(aes, keys.clientKey, keys.clientMacKey, clientReader);
+        // send ack to client
+        String ackMessage = "ACK";
+        MessageHelper.sendMessage(ackMessage, MessageType.Ack, aes, keys.serverKey, keys.serverMacKey, clientOut);
+
 
         cerfificateAuthority.close();
 

@@ -4,6 +4,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.security.PublicKey;
+import java.util.Base64;
 
 public class Client {
 
@@ -20,6 +21,9 @@ public class Client {
     private BufferedReader CAReader;
     private Certificate certificate;
     private RSA rsa;
+
+    private Keys keys;
+    private AES aes;
 
     public static void main(String[] args) {
         System.out.println("Client starts.");
@@ -73,13 +77,15 @@ public class Client {
         serverOut = new PrintWriter(server.getOutputStream(), true);
         serverReader = new BufferedReader(new InputStreamReader(server.getInputStream()));
 
-        serverOut.println(certificate.toString());
+        byte[] clientNonce = Common.generateNonce();
+        serverOut.println(certificate.toString() + " nonce: " + Base64.getEncoder().encodeToString(clientNonce));
         serverOut.flush();
 
         String initialResponse = serverReader.readLine();
         System.out.println("Server says: " + initialResponse);
 
         Certificate serverCertificateTemp = new Certificate(initialResponse);
+        byte[] serverNonce = Common.getNonce(initialResponse);
 
         cerfificateAuthority = new Socket(CAIP, Common.CA_PORT);
         CAOut = new PrintWriter(cerfificateAuthority.getOutputStream(), true);
@@ -97,8 +103,31 @@ public class Client {
         } else
             System.out.println("Server certificate is fraud!!");
 
+
+        // client generate premaster secret
+        byte[] premasterSecret = KeyGenerationHelper.generatePremasterSecret();
+        // encrypt it with server public key RSA and send it to server
+        String encryptedPremasterSecret = RSA.encrypt(Base64.getEncoder().encodeToString(premasterSecret), serverCertificate.getPublicKey());
+        serverOut.println(encryptedPremasterSecret);
+        serverOut.flush();
+        // generate master secret with premaster secret
+        byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
+        // generate keys using master secret
+        keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+
+
+        // send message encrypted with AES to server
+        String tmpStr = "moin ik bins der client";
+        aes = new AES();
+        // send message
+        MessageHelper.sendMessage(tmpStr, MessageType.Text, aes, keys.clientKey, keys.clientMacKey, serverOut);
+        // receive ack from server
+        MessageHelper.receiveMessage(aes, keys.serverKey, keys.serverMacKey, serverReader);
+
         cerfificateAuthority.close();
 
     }
 
+
+    
 }
