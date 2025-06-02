@@ -8,7 +8,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class AES {
     
-    public static Cipher cipher;
+    private Cipher cipher;
 
 // premaster secreti secure random ile 48 byte bi string generate etcez. 
     public AES(){

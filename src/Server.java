@@ -4,11 +4,9 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
 import java.util.Base64;
 
-import javax.crypto.spec.SecretKeySpec;
 
 public class Server {
 
@@ -26,6 +24,9 @@ public class Server {
     private PrintWriter CAOut;
     private BufferedReader CAReader;
     private RSA rsa;
+    
+    private Keys keys;
+    private AES aes;
 
     public static void main(String[] args) {
 
@@ -41,12 +42,14 @@ public class Server {
         try {
             server = new ServerSocket(Common.PORT_NUMBER);
             rsa = new RSA();
+            aes = new AES();
 
             this.certificate = getCertificate();
 
             System.out.println(certificate.toString());
 
             secureSessionHello(server);
+            startCommunication();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -95,6 +98,7 @@ public class Server {
         CAOut.flush();
 
         String CAResponse = CAReader.readLine();
+        cerfificateAuthority.close();
         PublicKey caPkey = RSA.generatePublicKeyFromString(CAResponse);
 
         if (clientCertificateTemp.checkSignature(caPkey)) {
@@ -103,6 +107,10 @@ public class Server {
         } else
             System.out.println("Client certificate is fraud!!");
 
+        generateKeys(clientNonce, serverNonce);
+    }
+
+    private void generateKeys(byte[] clientNonce, byte[] serverNonce) throws IOException {
         // recieve the premaster secret
         String encryptedPremasterSecret = clientReader.readLine();
         String premasterSecretString = RSA.decrypt(encryptedPremasterSecret, rsa.getPrivateKey());
@@ -110,17 +118,35 @@ public class Server {
         // generate master secret
         byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
         // generate keys
-        Keys keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
-        AES aes = new AES();
+        keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+    }
+
+    private void updateKeys(MessageHelper messageHelper) throws IOException{
+        // receive the nonce from client
+        String clientMsg = messageHelper.receiveMessage();
+        byte[] clientNonce = Base64.getDecoder().decode(messageHelper.getMessageContent(clientMsg));
+        // generate new server nonce and send it to the client
+        byte[] serverNonce = Common.generateNonce();
+        String serverNonceString = Base64.getEncoder().encodeToString(serverNonce);
+        messageHelper.sendMessage(serverNonceString, "nonce.txt", MessageType.Nonce);
+        // generate new keys
+        generateKeys(clientNonce, serverNonce);
+        messageHelper.updateKeys(keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey);
+    }
+
+    private void startCommunication() throws IOException{
+        MessageHelper messageHelper = new MessageHelper(aes, keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey, clientOut, clientReader);
         
         // get client message
-        MessageHelper.receiveMessage(aes, keys.clientKey, keys.clientMacKey, clientReader);
+        messageHelper.receiveMessage();
         // send ack to client
         String ackMessage = "ACK";
-        MessageHelper.sendMessage(ackMessage, MessageType.Ack, aes, keys.serverKey, keys.serverMacKey, clientOut);
+        messageHelper.sendMessage(ackMessage, "ack.txt", MessageType.Ack);
 
+        updateKeys(messageHelper);
 
-        cerfificateAuthority.close();
-
+        messageHelper.receiveMessage();
+        // send ack to client
+        messageHelper.sendMessage("ACK2", "ack2.txt", MessageType.Ack);
     }
 }

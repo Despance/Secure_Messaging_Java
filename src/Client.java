@@ -36,6 +36,7 @@ public class Client {
         this.CAIP = CAIP;
         this.serverIP = serverIP;
         rsa = new RSA();
+        aes = new AES();
 
         System.out.println("My private: " + rsa.getPrivateKey());
         System.out.println("My public: " + rsa.getPublicKey());
@@ -44,6 +45,7 @@ public class Client {
             this.certificate = getCertificate();
 
             secureSessionHello();
+            startCommunication();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -95,6 +97,7 @@ public class Client {
         CAOut.flush();
 
         String CAResponse = CAReader.readLine();
+        cerfificateAuthority.close();
         PublicKey caPkey = RSA.generatePublicKeyFromString(CAResponse);
 
         if (serverCertificateTemp.checkSignature(caPkey)) {
@@ -103,7 +106,11 @@ public class Client {
         } else
             System.out.println("Server certificate is fraud!!");
 
+        generateKeys(clientNonce, serverNonce);
 
+    }
+
+    private void generateKeys(byte[] clientNonce, byte[] serverNonce) throws IOException{
         // client generate premaster secret
         byte[] premasterSecret = KeyGenerationHelper.generatePremasterSecret();
         // encrypt it with server public key RSA and send it to server
@@ -114,17 +121,37 @@ public class Client {
         byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
         // generate keys using master secret
         keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+    }
 
+    private void updateKeys(MessageHelper messageHelper) throws IOException{
+        // create new client nonce and send it to the server
+        byte[] clientNonce = Common.generateNonce();
+        String clientNonceString = Base64.getEncoder().encodeToString(clientNonce);
+        messageHelper.sendMessage(clientNonceString, "Nonce.txt", MessageType.Nonce);
+        // receive server nonce
+        String serverMsg = messageHelper.receiveMessage();
+        byte[] serverNonce = Base64.getDecoder().decode(messageHelper.getMessageContent(serverMsg));
+        // update keys
+        generateKeys(clientNonce, serverNonce);
+        messageHelper.updateKeys(keys.clientKey, keys.clientMacKey, keys.serverKey, keys.serverMacKey);
 
+    }
+
+    private void startCommunication() throws IOException{
+        MessageHelper messageHelper = new MessageHelper(aes, keys.clientKey, keys.clientMacKey, keys.serverKey, keys.serverMacKey, serverOut, serverReader);
         // send message encrypted with AES to server
         String tmpStr = "moin ik bins der client";
-        aes = new AES();
         // send message
-        MessageHelper.sendMessage(tmpStr, MessageType.Text, aes, keys.clientKey, keys.clientMacKey, serverOut);
+        messageHelper.sendMessage(tmpStr, "hi.txt" ,MessageType.Text);
         // receive ack from server
-        MessageHelper.receiveMessage(aes, keys.serverKey, keys.serverMacKey, serverReader);
+        messageHelper.receiveMessage();
 
-        cerfificateAuthority.close();
+        // update keys
+        updateKeys(messageHelper);
+
+        messageHelper.sendMessage("moin ik bins der client 2", "hi2.txt", MessageType.Text);
+        // receive ack from server
+        messageHelper.receiveMessage();
 
     }
 
