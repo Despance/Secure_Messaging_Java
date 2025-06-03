@@ -135,7 +135,8 @@ public class Server {
     }
 
     private void startCommunication() throws IOException{
-        MessageHelper messageHelper = new MessageHelper(aes, keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey, clientOut, clientReader);
+        MessageHelper messageHelper = new MessageHelper(aes, keys.serverKey, keys.serverMacKey,
+         keys.clientKey, keys.clientMacKey, keys.serverIv, keys.clientIv, clientOut, clientReader);
         
         // get client message
         messageHelper.receiveMessage();

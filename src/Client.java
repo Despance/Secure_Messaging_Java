@@ -138,7 +138,8 @@ public class Client {
     }
 
     private void startCommunication() throws IOException{
-        MessageHelper messageHelper = new MessageHelper(aes, keys.clientKey, keys.clientMacKey, keys.serverKey, keys.serverMacKey, serverOut, serverReader);
+        MessageHelper messageHelper = new MessageHelper(aes, keys.clientKey, keys.clientMacKey, 
+        keys.serverKey, keys.serverMacKey, keys.clientIv, keys.serverIv, serverOut, serverReader);
         // send message encrypted with AES to server
         String tmpStr = "moin ik bins der client";
         // send message

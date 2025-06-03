@@ -8,8 +8,8 @@ public class KeyGenerationHelper {
     private static final String ALGORITHM = "HmacSHA256";
     private static final int MASTER_SECRET_LENGTH = 48; // 48 bytes as stated in rfc 7627
     private static final int PREMASTER_SECRET_LENGTH = 48; // 48 bytes as stated in rfc5246
-    // 32(aes256 client) + 32(sha256 client) + 32(aes256 server) + 32(sha256 server)
-    private static final int KEY_GEN_LENGTH = 128; // TODO: need to add 64 more bits for IV (32 each) if we choose to use cbc
+    // 32(aes256 client) + 32(sha256 client) + 32(aes256 server) + 32(sha256 server) + 16(clien iv) + 16(server iv) = 160
+    private static final int KEY_GEN_LENGTH = 160;
         
 
     // prf(pseudo random function) as stated in rfc 5246
@@ -59,11 +59,15 @@ public class KeyGenerationHelper {
         byte[] serverMacKey = new byte[32];
         byte[] clientKey = new byte[32];
         byte[] serverKey = new byte[32];
+        byte[] clientIv = new byte[16];
+        byte[] serverIv = new byte[16];
         System.arraycopy(result, 0, clientMacKey, 0, 32);
         System.arraycopy(result, 32, serverMacKey, 0, 32);
         System.arraycopy(result, 64, clientKey, 0, 32);
         System.arraycopy(result, 96, serverKey, 0, 32);
-        return new Keys(clientMacKey, serverMacKey, clientKey, serverKey);
+        System.arraycopy(result, 128, clientIv, 0, 16);
+        System.arraycopy(result, 144, serverIv, 0, 16);
+        return new Keys(clientMacKey, serverMacKey, clientKey, serverKey, clientIv, serverIv);
     }
 
     public static byte[] generatePremasterSecret(){
