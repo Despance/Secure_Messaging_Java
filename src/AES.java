@@ -11,7 +11,7 @@ public class AES {
     
     private Cipher cipher;
 
-// premaster secreti secure random ile 48 byte bi string generate etcez. 
+    // TODO: maybe add hmac(iv, master secret) to prevent iv reuse(pdf de yazmiyo galiba... gerek yok gibi yani)
     public AES(){
         try {
             cipher = Cipher.getInstance("AES/CTR/NoPadding");
