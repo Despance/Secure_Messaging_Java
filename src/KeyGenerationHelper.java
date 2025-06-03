@@ -51,6 +51,12 @@ public class KeyGenerationHelper {
         return Prf(premasterSecret, concatBytes(clientNonce, serverNonce), "master secret", MASTER_SECRET_LENGTH);
     }
 
+    public static byte[] updateMasterSecret(byte[] masterSecret, byte[] clientNonce, byte[] serverNonce){
+        // couldn't really find anything about using prf for updating keys(may have missed it) so i just used "key update" as the label
+        // .... hope that's fine
+        return Prf(masterSecret, concatBytes(clientNonce, serverNonce), "key update", MASTER_SECRET_LENGTH);
+    }
+
 
     public static Keys generateKeys(byte[] masterSecret, byte[] clientNonce, byte[] serverNonce){
         // apparently the lablel is "key expansion" which kind of sounds dumb but it is stated in the RFC 5246 as such... yeah

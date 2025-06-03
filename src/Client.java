@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.security.Key;
 import java.security.PublicKey;
 import java.util.Base64;
 
@@ -24,6 +25,12 @@ public class Client {
 
     private Keys keys;
     private AES aes;
+    
+    // TODO: gotta find a better way to hold this(master secret and nonces)...
+    // maybe keygenhelper as a object and holding it there?
+    private byte[] masterSecret;
+    private byte[] clientNonce;
+    private byte[] serverNonce;
 
     public static void main(String[] args) {
         System.out.println("Client starts.");
@@ -79,7 +86,7 @@ public class Client {
         serverOut = new PrintWriter(server.getOutputStream(), true);
         serverReader = new BufferedReader(new InputStreamReader(server.getInputStream()));
 
-        byte[] clientNonce = Common.generateNonce();
+        clientNonce = Common.generateNonce();
         serverOut.println(certificate.toString() + " nonce: " + Base64.getEncoder().encodeToString(clientNonce));
         serverOut.flush();
 
@@ -87,7 +94,7 @@ public class Client {
         System.out.println("Server says: " + initialResponse);
 
         Certificate serverCertificateTemp = new Certificate(initialResponse);
-        byte[] serverNonce = Common.getNonce(initialResponse);
+        serverNonce = Common.getNonce(initialResponse);
 
         cerfificateAuthority = new Socket(CAIP, Common.CA_PORT);
         CAOut = new PrintWriter(cerfificateAuthority.getOutputStream(), true);
@@ -118,22 +125,15 @@ public class Client {
         serverOut.println(encryptedPremasterSecret);
         serverOut.flush();
         // generate master secret with premaster secret
-        byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
+        masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
         // generate keys using master secret
         keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
     }
 
     private void updateKeys(MessageHelper messageHelper) throws IOException{
-        // create new client nonce and send it to the server
-        byte[] clientNonce = Common.generateNonce();
-        String clientNonceString = Base64.getEncoder().encodeToString(clientNonce);
-        messageHelper.sendMessage(clientNonceString, "Nonce.txt", MessageType.Nonce);
-        // receive server nonce
-        String serverMsg = messageHelper.receiveMessage();
-        byte[] serverNonce = Base64.getDecoder().decode(messageHelper.getMessageContent(serverMsg));
-        // update keys
-        generateKeys(clientNonce, serverNonce);
-        messageHelper.updateKeys(keys.clientKey, keys.clientMacKey, keys.serverKey, keys.serverMacKey);
+        masterSecret = KeyGenerationHelper.updateMasterSecret(masterSecret, clientNonce, serverNonce);
+        keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+        messageHelper.updateKeys(keys.clientKey, keys.clientMacKey, keys.serverKey, keys.serverMacKey, keys.clientIv, keys.serverIv);
 
     }
 
@@ -141,7 +141,7 @@ public class Client {
         MessageHelper messageHelper = new MessageHelper(aes, keys.clientKey, keys.clientMacKey, 
         keys.serverKey, keys.serverMacKey, keys.clientIv, keys.serverIv, serverOut, serverReader);
         // send message encrypted with AES to server
-        String tmpStr = "moin ik bins der client";
+        String tmpStr = "moin ik bims der client";
         // send message
         messageHelper.sendMessage(tmpStr, "hi.txt" ,MessageType.Text);
         // receive ack from server
@@ -150,7 +150,7 @@ public class Client {
         // update keys
         updateKeys(messageHelper);
 
-        messageHelper.sendMessage("moin ik bins der client 2", "hi2.txt", MessageType.Text);
+        messageHelper.sendMessage("moin ik bims der client 2", "hi2.txt", MessageType.Text);
         // receive ack from server
         messageHelper.receiveMessage();
 

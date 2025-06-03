@@ -28,6 +28,10 @@ public class Server {
     private Keys keys;
     private AES aes;
 
+    private byte[] masterSecret;
+    private byte[] clientNonce;
+    private byte[] serverNonce;
+
     public static void main(String[] args) {
 
         System.out.println("Server starts.");
@@ -84,12 +88,12 @@ public class Server {
 
         String initialResponse = clientReader.readLine();
 
-        byte[] serverNonce = Common.generateNonce();
+        serverNonce = Common.generateNonce();
         clientOut.println(certificate.toString() + "nonce: " + Base64.getEncoder().encodeToString(serverNonce));
         clientOut.flush();
 
         Certificate clientCertificateTemp = new Certificate(initialResponse);
-        byte[] clientNonce = Common.getNonce(initialResponse);
+        clientNonce = Common.getNonce(initialResponse);
 
         cerfificateAuthority = new Socket(CAIP, Common.CA_PORT);
         CAOut = new PrintWriter(cerfificateAuthority.getOutputStream(), true);
@@ -116,22 +120,15 @@ public class Server {
         String premasterSecretString = RSA.decrypt(encryptedPremasterSecret, rsa.getPrivateKey());
         byte[] premasterSecret = Base64.getDecoder().decode(premasterSecretString);
         // generate master secret
-        byte[] masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
+        masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
         // generate keys
         keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
     }
 
     private void updateKeys(MessageHelper messageHelper) throws IOException{
-        // receive the nonce from client
-        String clientMsg = messageHelper.receiveMessage();
-        byte[] clientNonce = Base64.getDecoder().decode(messageHelper.getMessageContent(clientMsg));
-        // generate new server nonce and send it to the client
-        byte[] serverNonce = Common.generateNonce();
-        String serverNonceString = Base64.getEncoder().encodeToString(serverNonce);
-        messageHelper.sendMessage(serverNonceString, "nonce.txt", MessageType.Nonce);
-        // generate new keys
-        generateKeys(clientNonce, serverNonce);
-        messageHelper.updateKeys(keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey);
+        masterSecret = KeyGenerationHelper.updateMasterSecret(masterSecret, clientNonce, serverNonce);
+        keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+        messageHelper.updateKeys(keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey, keys.serverIv, keys.clientIv);
     }
 
     private void startCommunication() throws IOException{

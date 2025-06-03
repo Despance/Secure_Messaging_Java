@@ -31,11 +31,13 @@ public class MessageHelper {
         this.input = input;
     }
 
-    public void updateKeys(byte[] aesKeySend, byte[] hmacKeySend, byte[] aesKeyReceive, byte[] hmacKeyReceive) {
+    public void updateKeys(byte[] aesKeySend, byte[] hmacKeySend, byte[] aesKeyReceive, byte[] hmacKeyReceive, byte[] ivSend, byte[] ivReceive) {
         this.aesKeySend = aesKeySend;
         this.hmacKeySend = hmacKeySend;
         this.aesKeyReceive = aesKeyReceive;
         this.hmacKeyReceive = hmacKeyReceive;
+        this.ivSend = ivSend;
+        this.ivReceive = ivReceive;
     }
 
     public String CreateHMAC(String message, byte[] macKey){
