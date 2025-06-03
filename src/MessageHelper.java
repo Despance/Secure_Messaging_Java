@@ -13,25 +13,31 @@ public class MessageHelper {
     private byte[] hmacKeySend;
     private byte[] aesKeyReceive;
     private byte[] hmacKeyReceive;
+    private byte[] ivSend;
+    private byte[] ivReceive;
 
     private PrintWriter output;
     private BufferedReader input;
 
-    public MessageHelper(AES aes, byte[] aesKeySend, byte[] hmacKeySend, byte[] aesKeyReceive, byte[] hmacKeyReceive, PrintWriter output, BufferedReader input) {
+    public MessageHelper(AES aes, byte[] aesKeySend, byte[] hmacKeySend, byte[] aesKeyReceive, byte[] hmacKeyReceive, byte[] ivSend, byte[] ivReceive, PrintWriter output, BufferedReader input) {
         this.aes = aes;
         this.aesKeySend = aesKeySend;
         this.hmacKeySend = hmacKeySend;
         this.aesKeyReceive = aesKeyReceive;
         this.hmacKeyReceive = hmacKeyReceive;
+        this.ivSend = ivSend;
+        this.ivReceive = ivReceive;
         this.output = output;
         this.input = input;
     }
 
-    public void updateKeys(byte[] aesKeySend, byte[] hmacKeySend, byte[] aesKeyReceive, byte[] hmacKeyReceive) {
+    public void updateKeys(byte[] aesKeySend, byte[] hmacKeySend, byte[] aesKeyReceive, byte[] hmacKeyReceive, byte[] ivSend, byte[] ivReceive) {
         this.aesKeySend = aesKeySend;
         this.hmacKeySend = hmacKeySend;
         this.aesKeyReceive = aesKeyReceive;
         this.hmacKeyReceive = hmacKeyReceive;
+        this.ivSend = ivSend;
+        this.ivReceive = ivReceive;
     }
 
     public String CreateHMAC(String message, byte[] macKey){
@@ -91,7 +97,7 @@ public class MessageHelper {
 
     public void sendMessage(String message, String fileName, MessageType type){
         String messageWithHmac = createMessageForm(type, fileName, message, hmacKeySend);
-        String encryptedMessage = aes.encrypt(messageWithHmac.getBytes(), aesKeySend);
+        String encryptedMessage = aes.encrypt(messageWithHmac.getBytes(), aesKeySend, ivSend);
         output.println(encryptedMessage);
         output.flush();
     }
@@ -99,7 +105,7 @@ public class MessageHelper {
     public String receiveMessage(){
         try {
             String encryptedMessage = input.readLine();
-            String decryptedMessage = aes.decrypt(encryptedMessage, aesKeyReceive);
+            String decryptedMessage = aes.decrypt(encryptedMessage, aesKeyReceive, ivReceive);
             
             if(validateMessage(decryptedMessage, hmacKeyReceive)){
                 MessageType type = getMessageType(decryptedMessage);
