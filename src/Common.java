@@ -1,9 +1,6 @@
 import java.security.SecureRandom;
 import java.util.Base64;
 
-import javax.crypto.Mac;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
 public class Common {
 
@@ -14,6 +11,8 @@ public class Common {
     public static final int CA_PORT = 25566;
 
     private static final int NONCE_BYTE_LENGTH = 32;
+
+    public static final int KEY_UPDATE_COUNT = 10; // Number of key updates before a new key is generated
 
 
     

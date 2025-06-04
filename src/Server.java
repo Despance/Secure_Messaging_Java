@@ -1,10 +1,12 @@
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.PublicKey;
+import java.sql.Date;
 import java.util.Base64;
 
 
@@ -28,9 +30,11 @@ public class Server {
     private Keys keys;
     private AES aes;
 
-    private byte[] masterSecret;
-    private byte[] clientNonce;
-    private byte[] serverNonce;
+    private int keyUpdateCount = 0;
+    private KeyGenerationHelper keyGenerationHelper;
+    private MessageHelper messageHelper;
+
+    private final String downloadPath = "serverDownloads/"; 
 
     public static void main(String[] args) {
 
@@ -88,12 +92,12 @@ public class Server {
 
         String initialResponse = clientReader.readLine();
 
-        serverNonce = Common.generateNonce();
+        byte[] serverNonce = Common.generateNonce();
         clientOut.println(certificate.toString() + "nonce: " + Base64.getEncoder().encodeToString(serverNonce));
         clientOut.flush();
 
         Certificate clientCertificateTemp = new Certificate(initialResponse);
-        clientNonce = Common.getNonce(initialResponse);
+        byte[] clientNonce = Common.getNonce(initialResponse);
 
         cerfificateAuthority = new Socket(CAIP, Common.CA_PORT);
         CAOut = new PrintWriter(cerfificateAuthority.getOutputStream(), true);
@@ -110,30 +114,26 @@ public class Server {
             System.out.println("Client certificate is valid.");
         } else
             System.out.println("Client certificate is fraud!!");
-
-        generateKeys(clientNonce, serverNonce);
-    }
-
-    private void generateKeys(byte[] clientNonce, byte[] serverNonce) throws IOException {
+        
+        
         // recieve the premaster secret
         String encryptedPremasterSecret = clientReader.readLine();
         String premasterSecretString = RSA.decrypt(encryptedPremasterSecret, rsa.getPrivateKey());
         byte[] premasterSecret = Base64.getDecoder().decode(premasterSecretString);
-        // generate master secret
-        masterSecret = KeyGenerationHelper.generateMasterSecret(premasterSecret, clientNonce, serverNonce);
-        // generate keys
-        keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+        keyGenerationHelper = new KeyGenerationHelper(clientNonce, serverNonce, premasterSecret);
+        // generate keys(master secret gen is done in keyGenerationHelper)
+        keys = keyGenerationHelper.generateNewKeys();
+        // init messageHelper for further communication
+        messageHelper = new MessageHelper(aes, keys.serverKey, keys.serverMacKey,
+        keys.clientKey, keys.clientMacKey, keys.serverIv, keys.clientIv, clientOut, clientReader);
     }
 
-    private void updateKeys(MessageHelper messageHelper) throws IOException{
-        masterSecret = KeyGenerationHelper.updateMasterSecret(masterSecret, clientNonce, serverNonce);
-        keys = KeyGenerationHelper.generateKeys(masterSecret, clientNonce, serverNonce);
+    private void updateKeys() throws IOException{
+        keys = keyGenerationHelper.updateKeys();
         messageHelper.updateKeys(keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey, keys.serverIv, keys.clientIv);
     }
 
     private void startCommunication() throws IOException{
-        MessageHelper messageHelper = new MessageHelper(aes, keys.serverKey, keys.serverMacKey,
-         keys.clientKey, keys.clientMacKey, keys.serverIv, keys.clientIv, clientOut, clientReader);
         
         // get client message
         messageHelper.receiveMessage();
@@ -141,10 +141,74 @@ public class Server {
         String ackMessage = "ACK";
         messageHelper.sendMessage(ackMessage, "ack.txt", MessageType.Ack);
 
-        updateKeys(messageHelper);
+        updateKeys();
 
         messageHelper.receiveMessage();
         // send ack to client
         messageHelper.sendMessage("ACK2", "ack2.txt", MessageType.Ack);
+
+        receiveMessage();
+    }
+
+    private File handleFileCreation(String fileName, String content) {
+        try {
+            // Ensure the download directory exists
+            File downloadDir = new File(downloadPath);
+            if (!downloadDir.exists()) {
+                downloadDir.mkdirs();
+            }
+            File file = new File(downloadPath + fileName);
+            PrintWriter printWriter = new PrintWriter(file);
+            printWriter.println(content);
+            printWriter.close();
+            return file;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private void handleKeyUpdate() {
+        try {
+            keyUpdateCount++;
+            if (keyUpdateCount >= Common.KEY_UPDATE_COUNT) {
+                updateKeys();
+                keyUpdateCount = 0;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void sendMessage(String content){
+        messageHelper.sendMessage(content, null, MessageType.Text);
+    }
+
+    public void sendMessage(String content, String fileName, MessageType type){
+        messageHelper.sendMessage(content, fileName, type);
+    }
+
+    public Object receiveMessage(){
+        String message = messageHelper.receiveMessage();
+        String fileName = messageHelper.getFileName(message);
+        // check if it's an ack message
+        if(messageHelper.getMessageType(message) == MessageType.Ack){
+            return messageHelper.getMessageContent(message);
+        }
+        // if not an ack message, handle key update
+        handleKeyUpdate();
+        // if not an ack message, we need to send one so take timestamp
+        Date now = new Date(System.currentTimeMillis());
+        String timeStamp = now.toString();
+        // if fileName is null, it means it's an text message without a file
+        if(fileName.equals("null") || fileName.isEmpty()){
+            //send ack and return the content
+            messageHelper.sendMessage("ACK for message received at: " + timeStamp, null, MessageType.Ack);
+            return messageHelper.getMessageContent(message);
+        } else {
+            // send ack with timestamp and fileName
+            messageHelper.sendMessage("ACK for file " +fileName+" received at: " + timeStamp, null, MessageType.Ack);
+            return handleFileCreation(fileName, messageHelper.getMessageContent(message));
+        }
     }
 }
