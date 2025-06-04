@@ -5,15 +5,30 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class KeyGenerationHelper {
 
-    private static final String ALGORITHM = "HmacSHA256";
-    private static final int MASTER_SECRET_LENGTH = 48; // 48 bytes as stated in rfc 7627
-    private static final int PREMASTER_SECRET_LENGTH = 48; // 48 bytes as stated in rfc5246
-    // 32(aes256 client) + 32(sha256 client) + 32(aes256 server) + 32(sha256 server)
-    private static final int KEY_GEN_LENGTH = 128; // TODO: need to add 64 more bits for IV (32 each) if we choose to use cbc
-        
+    private final String ALGORITHM = "HmacSHA256";
+    private final int MASTER_SECRET_LENGTH = 48; // 48 bytes as stated in rfc 7627
+    private final int PREMASTER_SECRET_LENGTH = 48; // 48 bytes as stated in rfc5246
+    // 32(aes256 client) + 32(sha256 client) + 32(aes256 server) + 32(sha256 server) + 16(clien iv) + 16(server iv) = 160
+    private final int KEY_GEN_LENGTH = 160;
+
+    private byte[] clientNonce;
+    private byte[] serverNonce;
+    private byte[] premasterSecret;
+    private byte[] masterSecret;
+
+    public KeyGenerationHelper(byte[] clientNonce, byte[] serverNonce) {
+        this.clientNonce = clientNonce;
+        this.serverNonce = serverNonce;
+    } 
+
+    public KeyGenerationHelper(byte[] clientNonce, byte[] serverNonce, byte[] premasterSecret) {
+        this.clientNonce = clientNonce;
+        this.serverNonce = serverNonce;
+        this.premasterSecret = premasterSecret;
+    }
 
     // prf(pseudo random function) as stated in rfc 5246
-    private static byte[] Prf(byte[] secret, byte[] seed, String label, int length) {
+    private byte[] Prf(byte[] secret, byte[] seed, String label, int length) {
         try {
             Mac hmac = Mac.getInstance(ALGORITHM);
             SecretKeySpec keySpec = new SecretKeySpec(secret, ALGORITHM);
@@ -39,35 +54,54 @@ public class KeyGenerationHelper {
         return null;
     }
     
-    private static byte[] concatBytes(byte[] a, byte[] b){
+    private byte[] concatBytes(byte[] a, byte[] b){
         byte[] result = new byte[a.length + b.length];
         System.arraycopy(a, 0, result, 0, a.length);
         System.arraycopy(b, 0, result, a.length, b.length);
         return result;
     }
 
-    public static byte[] generateMasterSecret(byte[] premasterSecret, byte[] clientNonce, byte[] serverNonce){
+    private void generateMasterSecret(){
         // apparently the lablel is "master secret" which kind of sounds dumb but it is stated in the RFC 7627 as such... yeah
-        return Prf(premasterSecret, concatBytes(clientNonce, serverNonce), "master secret", MASTER_SECRET_LENGTH);
+        masterSecret = Prf(premasterSecret, concatBytes(clientNonce, serverNonce), "master secret", MASTER_SECRET_LENGTH);
     }
 
+    private void updateMasterSecret(){
+        // couldn't really find anything about using prf for updating keys(may have missed it) so i just used "key update" as the label
+        // .... hope that's fine
+        masterSecret = Prf(masterSecret, concatBytes(clientNonce, serverNonce), "key update", MASTER_SECRET_LENGTH);
+    }
 
-    public static Keys generateKeys(byte[] masterSecret, byte[] clientNonce, byte[] serverNonce){
+    private Keys generateKeys(){
         // apparently the lablel is "key expansion" which kind of sounds dumb but it is stated in the RFC 5246 as such... yeah
         byte[] result = Prf(masterSecret, concatBytes(clientNonce, serverNonce), "key expansion", KEY_GEN_LENGTH);
         byte[] clientMacKey = new byte[32];
         byte[] serverMacKey = new byte[32];
         byte[] clientKey = new byte[32];
         byte[] serverKey = new byte[32];
+        byte[] clientIv = new byte[16];
+        byte[] serverIv = new byte[16];
         System.arraycopy(result, 0, clientMacKey, 0, 32);
         System.arraycopy(result, 32, serverMacKey, 0, 32);
         System.arraycopy(result, 64, clientKey, 0, 32);
         System.arraycopy(result, 96, serverKey, 0, 32);
-        return new Keys(clientMacKey, serverMacKey, clientKey, serverKey);
+        System.arraycopy(result, 128, clientIv, 0, 16);
+        System.arraycopy(result, 144, serverIv, 0, 16);
+        return new Keys(clientMacKey, serverMacKey, clientKey, serverKey, clientIv, serverIv);
     }
 
-    public static byte[] generatePremasterSecret(){
-        byte[] premasterSecret = new byte[PREMASTER_SECRET_LENGTH];
+    public Keys updateKeys(){
+        updateMasterSecret();
+        return generateKeys();    
+    }
+
+    public Keys generateNewKeys(){
+        generateMasterSecret();
+        return generateKeys();
+    }
+
+    public byte[] generateNewPremasterSecret(){
+        premasterSecret = new byte[PREMASTER_SECRET_LENGTH];
         SecureRandom secureRandom = new SecureRandom();
         secureRandom.nextBytes(premasterSecret);
         
