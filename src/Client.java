@@ -1,9 +1,14 @@
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.io.Reader;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.PublicKey;
 import java.sql.Date;
 import java.time.LocalDateTime;
@@ -157,6 +162,12 @@ public class Client {
         sendMessage("sending text without a file");
         receiveMessage();
 
+        sendMessage("clientDownloads/hi.txt", MessageType.Text);
+        receiveMessage();
+
+        sendMessage("clientDownloads/miyabi.png", MessageType.Image);
+        receiveMessage();
+
     }
 
     private File handleFileCreation(String fileName, String content) {
@@ -167,9 +178,8 @@ public class Client {
                 downloadDir.mkdirs();
             }
             File file = new File(downloadPath + fileName);
-            PrintWriter printWriter = new PrintWriter(file);
-            printWriter.println(content);
-            printWriter.close();
+            Path filePath = Paths.get(file.getAbsolutePath());
+            Common.writeFile(filePath, content);
             return file;
         } catch (Exception e) {
             e.printStackTrace();
@@ -195,7 +205,11 @@ public class Client {
 
     }
 
-    public void sendMessage(String content, String fileName, MessageType type) {
+    public void sendMessage(String filePath, MessageType type) {
+        Path filePathObj = Paths.get(filePath);
+        String content = Common.readFile(filePathObj);
+        String fileName = filePathObj.getFileName().toString();
+
         messageHelper.sendMessage(content, fileName, type);
         handleKeyUpdate();
 

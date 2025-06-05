@@ -5,6 +5,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.PublicKey;
 import java.sql.Date;
 import java.time.LocalDateTime;
@@ -186,7 +188,11 @@ public class Server {
         messageHelper.sendMessage(content, null, MessageType.Text);
     }
 
-    public void sendMessage(String content, String fileName, MessageType type) {
+    public void sendMessage(String filePath, MessageType type) {
+        Path filePathObj = Paths.get(filePath);
+        String content = Common.readFile(filePathObj);
+        String fileName = filePathObj.getFileName().toString();
+        
         messageHelper.sendMessage(content, fileName, type);
     }
 

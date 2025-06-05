@@ -1,5 +1,7 @@
 import java.io.BufferedReader;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 import javax.crypto.Mac;
@@ -15,6 +17,9 @@ public class MessageHelper {
     private byte[] hmacKeyReceive;
     private byte[] ivSend;
     private byte[] ivReceive;
+
+    private long sequenceNumberSend = 0;
+    private long sequenceNumberReceive = 0;
 
     private PrintWriter output;
     private BufferedReader input;
@@ -57,6 +62,7 @@ public class MessageHelper {
 
     public String createMessageForm(MessageType type, String fileName, String content, byte[] macKey) {
         String hmac = CreateHMAC((type.toString() + fileName + content), macKey);
+        content = Base64.getEncoder().encodeToString(content.getBytes());
         String message = "{\"type\": \"" + type.toString() + "\", \"fileName\": \"" + fileName + "\", \"content\": \""
                 + content + "\", \"hmac\": \"" + hmac + "\"}";
         return message;
@@ -72,7 +78,8 @@ public class MessageHelper {
     public String getMessageContent(String message) {
         int beginIndex = message.indexOf("content") + 11;
         int endIndex = message.indexOf("\",", beginIndex);
-        return message.substring(beginIndex, endIndex);
+        String content = message.substring(beginIndex, endIndex);
+        return new String(Base64.getDecoder().decode(content));
     }
 
     public String getFileName(String message) {
@@ -101,6 +108,13 @@ public class MessageHelper {
         String encryptedMessage = aes.encrypt(messageWithHmac.getBytes(), aesKeySend, ivSend);
         output.println(encryptedMessage);
         output.flush();
+
+        // if sending a new message(non ack)
+        if(!type.equals(MessageType.Ack)){
+            // update sender iv and seq num
+            sequenceNumberSend++;
+            ivSend = xorIV(ivSend, sequenceNumberSend);
+        }
     }
 
     public String receiveMessage() {
@@ -111,6 +125,12 @@ public class MessageHelper {
             if (validateMessage(decryptedMessage, hmacKeyReceive)) {
                 MessageType type = getMessageType(decryptedMessage);
                 String content = getMessageContent(decryptedMessage);
+
+                if(!type.equals(MessageType.Ack)){
+                    // if received non ack message fron receiver, increment receiver seq num and receiver iv
+                    sequenceNumberReceive++;
+                    ivReceive = xorIV(ivReceive, sequenceNumberReceive);
+                }
                 // LOG ONLY
                 /*
                  * if (type != MessageType.Ack)
@@ -127,5 +147,16 @@ public class MessageHelper {
         }
         return null;
     }
+
+    private byte[] xorIV(byte[] iv, long sequenceNumber) {
+        byte[] seqNum = ByteBuffer.allocate(16).putLong(8, sequenceNumber).array();
+        byte[] result = new byte[16];
+        for (int i = 0; i < iv.length; i++) {
+            result[i] = (byte)(iv[i]^seqNum[i]);
+        }
+        return result;
+    }
+
+    
 
 }
