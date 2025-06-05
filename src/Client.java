@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.security.PublicKey;
 import java.sql.Date;
+import java.time.LocalDateTime;
 import java.util.Base64;
 
 public class Client {
@@ -196,6 +197,8 @@ public class Client {
 
     public void sendMessage(String content, String fileName, MessageType type) {
         messageHelper.sendMessage(content, fileName, type);
+        handleKeyUpdate();
+
     }
 
     public Object receiveMessage() {
@@ -205,17 +208,15 @@ public class Client {
         if (messageHelper.getMessageType(message) == MessageType.Ack) {
             return messageHelper.getMessageContent(message);
         }
-        // if not an ack message, we need to send one so take timestamp
-        Date now = new Date(System.currentTimeMillis());
-        String timeStamp = now.toGMTString();
         // if fileName is null, it means it's an text message without a file
         if (fileName.equals("null") || fileName.isEmpty()) {
             // send ack and return the content
-            messageHelper.sendMessage("ACK for message received at: " + timeStamp, null, MessageType.Ack);
+            messageHelper.sendMessage("ACK for message received at: " + LocalDateTime.now(), null, MessageType.Ack);
             return messageHelper.getMessageContent(message);
         } else {
             // send ack with timestamp and fileName
-            messageHelper.sendMessage("ACK for file " + fileName + " received at: " + timeStamp, null, MessageType.Ack);
+            messageHelper.sendMessage("ACK for file " + fileName + " received at: " + LocalDateTime.now(), null,
+                    MessageType.Ack);
             return handleFileCreation(fileName, messageHelper.getMessageContent(message));
         }
 
