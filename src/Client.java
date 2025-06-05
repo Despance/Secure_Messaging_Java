@@ -40,7 +40,7 @@ public class Client {
 
     }
 
-    private Client(String serverIP, String CAIP) {
+    public Client(String serverIP, String CAIP) {
         this.CAIP = CAIP;
         this.serverIP = serverIP;
         rsa = new RSA();
@@ -114,34 +114,35 @@ public class Client {
         } else
             System.out.println("Server certificate is fraud!!");
 
-        
         keyGenerationHelper = new KeyGenerationHelper(clientNonce, serverNonce);
         // client generate premaster secret
         byte[] premasterSecret = keyGenerationHelper.generateNewPremasterSecret();
         // encrypt it with server public key RSA and send it to server
-        String encryptedPremasterSecret = RSA.encrypt(Base64.getEncoder().encodeToString(premasterSecret), serverCertificate.getPublicKey());
+        String encryptedPremasterSecret = RSA.encrypt(Base64.getEncoder().encodeToString(premasterSecret),
+                serverCertificate.getPublicKey());
         serverOut.println(encryptedPremasterSecret);
         serverOut.flush();
         // generate keys(master secret gen is done in key generation helper)
         keys = keyGenerationHelper.generateNewKeys();
         // init messageHelper for further communication
-        messageHelper = new MessageHelper(aes, keys.clientKey, keys.clientMacKey, 
-        keys.serverKey, keys.serverMacKey, keys.clientIv, keys.serverIv, serverOut, serverReader);
+        messageHelper = new MessageHelper(aes, keys.clientKey, keys.clientMacKey,
+                keys.serverKey, keys.serverMacKey, keys.clientIv, keys.serverIv, serverOut, serverReader);
     }
 
-    private void updateKeys() throws IOException{
+    private void updateKeys() throws IOException {
         System.out.println("Updating keys");
         keys = keyGenerationHelper.updateKeys();
-        messageHelper.updateKeys(keys.clientKey, keys.clientMacKey, keys.serverKey, keys.serverMacKey, keys.clientIv, keys.serverIv);
+        messageHelper.updateKeys(keys.clientKey, keys.clientMacKey, keys.serverKey, keys.serverMacKey, keys.clientIv,
+                keys.serverIv);
 
     }
 
-    private void startCommunication() throws IOException{
-        
+    private void startCommunication() throws IOException {
+
         // send message encrypted with AES to server
         String tmpStr = "moin ik bims der client";
         // send message
-        messageHelper.sendMessage(tmpStr, "hi.txt" ,MessageType.Text);
+        messageHelper.sendMessage(tmpStr, "hi.txt", MessageType.Text);
         // receive ack from server
         messageHelper.receiveMessage();
 
@@ -154,7 +155,6 @@ public class Client {
 
         sendMessage("sending text without a file");
         receiveMessage();
-
 
     }
 
@@ -188,39 +188,36 @@ public class Client {
         }
     }
 
-    public void sendMessage(String content){
+    public void sendMessage(String content) {
         messageHelper.sendMessage(content, null, MessageType.Text);
     }
 
-    public void sendMessage(String content, String fileName, MessageType type){
+    public void sendMessage(String content, String fileName, MessageType type) {
         messageHelper.sendMessage(content, fileName, type);
     }
 
-    
-    public Object receiveMessage(){
+    public Object receiveMessage() {
         String message = messageHelper.receiveMessage();
         String fileName = messageHelper.getFileName(message);
         // check if it's an ack message
-        if(messageHelper.getMessageType(message) == MessageType.Ack){
+        if (messageHelper.getMessageType(message) == MessageType.Ack) {
             handleKeyUpdate();
             return messageHelper.getMessageContent(message);
         }
         // if not an ack message, we need to send one so take timestamp
         Date now = new Date(System.currentTimeMillis());
-        String timeStamp = now.toString();
+        String timeStamp = now.toGMTString();
         // if fileName is null, it means it's an text message without a file
-        if(fileName.equals("null") || fileName.isEmpty()){
-            //send ack and return the content
+        if (fileName.equals("null") || fileName.isEmpty()) {
+            // send ack and return the content
             messageHelper.sendMessage("ACK for message received at: " + timeStamp, null, MessageType.Ack);
             return messageHelper.getMessageContent(message);
         } else {
             // send ack with timestamp and fileName
-            messageHelper.sendMessage("ACK for file " +fileName+" received at: " + timeStamp, null, MessageType.Ack);
+            messageHelper.sendMessage("ACK for file " + fileName + " received at: " + timeStamp, null, MessageType.Ack);
             return handleFileCreation(fileName, messageHelper.getMessageContent(message));
         }
-        
+
     }
 
-
-    
 }

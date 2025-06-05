@@ -9,7 +9,6 @@ import java.security.PublicKey;
 import java.sql.Date;
 import java.util.Base64;
 
-
 public class Server {
 
     private ServerSocket server;
@@ -26,7 +25,7 @@ public class Server {
     private PrintWriter CAOut;
     private BufferedReader CAReader;
     private RSA rsa;
-    
+
     private Keys keys;
     private AES aes;
 
@@ -34,7 +33,7 @@ public class Server {
     private KeyGenerationHelper keyGenerationHelper;
     private MessageHelper messageHelper;
 
-    private final String downloadPath = "serverDownloads/"; 
+    private final String downloadPath = "serverDownloads/";
 
     public static void main(String[] args) {
 
@@ -44,7 +43,7 @@ public class Server {
 
     }
 
-    private Server(String CAIP) {
+    public Server(String CAIP) {
         this.CAIP = CAIP;
 
         try {
@@ -114,8 +113,7 @@ public class Server {
             System.out.println("Client certificate is valid.");
         } else
             System.out.println("Client certificate is fraud!!");
-        
-        
+
         // recieve the premaster secret
         String encryptedPremasterSecret = clientReader.readLine();
         String premasterSecretString = RSA.decrypt(encryptedPremasterSecret, rsa.getPrivateKey());
@@ -125,16 +123,17 @@ public class Server {
         keys = keyGenerationHelper.generateNewKeys();
         // init messageHelper for further communication
         messageHelper = new MessageHelper(aes, keys.serverKey, keys.serverMacKey,
-        keys.clientKey, keys.clientMacKey, keys.serverIv, keys.clientIv, clientOut, clientReader);
+                keys.clientKey, keys.clientMacKey, keys.serverIv, keys.clientIv, clientOut, clientReader);
     }
 
-    private void updateKeys() throws IOException{
+    private void updateKeys() throws IOException {
         keys = keyGenerationHelper.updateKeys();
-        messageHelper.updateKeys(keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey, keys.serverIv, keys.clientIv);
+        messageHelper.updateKeys(keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey, keys.serverIv,
+                keys.clientIv);
     }
 
-    private void startCommunication() throws IOException{
-        
+    private void startCommunication() throws IOException {
+
         // get client message
         messageHelper.receiveMessage();
         // send ack to client
@@ -180,34 +179,34 @@ public class Server {
         }
     }
 
-    public void sendMessage(String content){
+    public void sendMessage(String content) {
         messageHelper.sendMessage(content, null, MessageType.Text);
     }
 
-    public void sendMessage(String content, String fileName, MessageType type){
+    public void sendMessage(String content, String fileName, MessageType type) {
         messageHelper.sendMessage(content, fileName, type);
     }
 
-    public Object receiveMessage(){
+    public Object receiveMessage() {
         String message = messageHelper.receiveMessage();
         String fileName = messageHelper.getFileName(message);
         // check if it's an ack message
-        if(messageHelper.getMessageType(message) == MessageType.Ack){
+        if (messageHelper.getMessageType(message) == MessageType.Ack) {
             return messageHelper.getMessageContent(message);
         }
         // if not an ack message, handle key update
         handleKeyUpdate();
         // if not an ack message, we need to send one so take timestamp
         Date now = new Date(System.currentTimeMillis());
-        String timeStamp = now.toString();
+        String timeStamp = now.toGMTString();
         // if fileName is null, it means it's an text message without a file
-        if(fileName.equals("null") || fileName.isEmpty()){
-            //send ack and return the content
+        if (fileName.equals("null") || fileName.isEmpty()) {
+            // send ack and return the content
             messageHelper.sendMessage("ACK for message received at: " + timeStamp, null, MessageType.Ack);
             return messageHelper.getMessageContent(message);
         } else {
             // send ack with timestamp and fileName
-            messageHelper.sendMessage("ACK for file " +fileName+" received at: " + timeStamp, null, MessageType.Ack);
+            messageHelper.sendMessage("ACK for file " + fileName + " received at: " + timeStamp, null, MessageType.Ack);
             return handleFileCreation(fileName, messageHelper.getMessageContent(message));
         }
     }

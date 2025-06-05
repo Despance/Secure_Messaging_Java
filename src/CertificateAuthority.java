@@ -16,7 +16,7 @@ public class CertificateAuthority {
         new CertificateAuthority();
     }
 
-    private CertificateAuthority() {
+    public CertificateAuthority() {
         try {
             rsa = new RSA();
             server = new ServerSocket(Common.CA_PORT);

@@ -6,7 +6,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 public class MessageHelper {
-    
+
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private AES aes;
     private byte[] aesKeySend;
@@ -19,7 +19,8 @@ public class MessageHelper {
     private PrintWriter output;
     private BufferedReader input;
 
-    public MessageHelper(AES aes, byte[] aesKeySend, byte[] hmacKeySend, byte[] aesKeyReceive, byte[] hmacKeyReceive, byte[] ivSend, byte[] ivReceive, PrintWriter output, BufferedReader input) {
+    public MessageHelper(AES aes, byte[] aesKeySend, byte[] hmacKeySend, byte[] aesKeyReceive, byte[] hmacKeyReceive,
+            byte[] ivSend, byte[] ivReceive, PrintWriter output, BufferedReader input) {
         this.aes = aes;
         this.aesKeySend = aesKeySend;
         this.hmacKeySend = hmacKeySend;
@@ -31,7 +32,8 @@ public class MessageHelper {
         this.input = input;
     }
 
-    public void updateKeys(byte[] aesKeySend, byte[] hmacKeySend, byte[] aesKeyReceive, byte[] hmacKeyReceive, byte[] ivSend, byte[] ivReceive) {
+    public void updateKeys(byte[] aesKeySend, byte[] hmacKeySend, byte[] aesKeyReceive, byte[] hmacKeyReceive,
+            byte[] ivSend, byte[] ivReceive) {
         this.aesKeySend = aesKeySend;
         this.hmacKeySend = hmacKeySend;
         this.aesKeyReceive = aesKeyReceive;
@@ -40,47 +42,46 @@ public class MessageHelper {
         this.ivReceive = ivReceive;
     }
 
-    public String CreateHMAC(String message, byte[] macKey){
-        try{
+    public String CreateHMAC(String message, byte[] macKey) {
+        try {
             Mac hmac = Mac.getInstance(HMAC_ALGORITHM);
-            hmac.init( new SecretKeySpec(macKey, HMAC_ALGORITHM) );
+            hmac.init(new SecretKeySpec(macKey, HMAC_ALGORITHM));
 
             byte[] signatureBytes = hmac.doFinal(message.getBytes());
             return Base64.getEncoder().encodeToString(signatureBytes);
-        }
-        catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
     }
 
-    public String createMessageForm(MessageType type, String fileName, String content, byte[] macKey){
-        String hmac = CreateHMAC( (type.toString()+fileName+content), macKey);
+    public String createMessageForm(MessageType type, String fileName, String content, byte[] macKey) {
+        String hmac = CreateHMAC((type.toString() + fileName + content), macKey);
         String message = "{\"type\": \"" + type.toString() + "\", \"fileName\": \"" + fileName + "\", \"content\": \""
-         + content + "\", \"hmac\": \"" + hmac + "\"}";
+                + content + "\", \"hmac\": \"" + hmac + "\"}";
         return message;
     }
 
-    public MessageType getMessageType(String message){
+    public MessageType getMessageType(String message) {
         int beginIndex = message.indexOf("type") + 8;
         int endIndex = message.indexOf("\",", beginIndex);
         String typeString = message.substring(beginIndex, endIndex);
         return MessageType.valueOf(typeString);
     }
 
-    public String getMessageContent(String message){
+    public String getMessageContent(String message) {
         int beginIndex = message.indexOf("content") + 11;
         int endIndex = message.indexOf("\",", beginIndex);
         return message.substring(beginIndex, endIndex);
     }
 
-    public String getFileName(String message){
+    public String getFileName(String message) {
         int beginIndex = message.indexOf("fileName") + 12;
         int endIndex = message.indexOf("\",", beginIndex);
         return message.substring(beginIndex, endIndex);
     }
 
-    public boolean validateMessage(String message, byte[] hmacKey){
+    public boolean validateMessage(String message, byte[] hmacKey) {
         int beginIndex = message.indexOf("hmac") + 8;
         int endIndex = message.indexOf("\"}", beginIndex);
         String hmac = message.substring(beginIndex, endIndex);
@@ -89,39 +90,42 @@ public class MessageHelper {
         String fileName = getFileName(message);
         String content = getMessageContent(message);
         String newHmac = CreateHMAC(type + fileName + content, hmacKey);
-        if(hmac.equals(newHmac)){
+        if (hmac.equals(newHmac)) {
             return true;
         }
         return false;
     }
 
-    public void sendMessage(String message, String fileName, MessageType type){
+    public void sendMessage(String message, String fileName, MessageType type) {
         String messageWithHmac = createMessageForm(type, fileName, message, hmacKeySend);
         String encryptedMessage = aes.encrypt(messageWithHmac.getBytes(), aesKeySend, ivSend);
         output.println(encryptedMessage);
         output.flush();
     }
 
-    public String receiveMessage(){
+    public String receiveMessage() {
         try {
             String encryptedMessage = input.readLine();
             String decryptedMessage = aes.decrypt(encryptedMessage, aesKeyReceive, ivReceive);
-            
-            if(validateMessage(decryptedMessage, hmacKeyReceive)){
+
+            if (validateMessage(decryptedMessage, hmacKeyReceive)) {
                 MessageType type = getMessageType(decryptedMessage);
                 String content = getMessageContent(decryptedMessage);
-                System.out.println("Received message of type: " + type + " with content: " + content);
-            }else{
+                // LOG ONLY
+                /*
+                 * if (type != MessageType.Ack)
+                 * System.out.println("Received message of type: " + type + " with content: " +
+                 * content);
+                 */
+            } else {
                 System.out.println("Invalid message received.");
             }
             return decryptedMessage;
 
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
     }
-
 
 }
