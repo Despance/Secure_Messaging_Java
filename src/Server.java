@@ -127,6 +127,8 @@ public class Server {
     }
 
     private void updateKeys() throws IOException {
+        System.out.println("Updating keys");
+
         keys = keyGenerationHelper.updateKeys();
         messageHelper.updateKeys(keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey, keys.serverIv,
                 keys.clientIv);

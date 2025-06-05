@@ -190,6 +190,8 @@ public class Client {
 
     public void sendMessage(String content) {
         messageHelper.sendMessage(content, null, MessageType.Text);
+        handleKeyUpdate();
+
     }
 
     public void sendMessage(String content, String fileName, MessageType type) {
@@ -201,7 +203,6 @@ public class Client {
         String fileName = messageHelper.getFileName(message);
         // check if it's an ack message
         if (messageHelper.getMessageType(message) == MessageType.Ack) {
-            handleKeyUpdate();
             return messageHelper.getMessageContent(message);
         }
         // if not an ack message, we need to send one so take timestamp
