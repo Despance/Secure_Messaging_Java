@@ -10,12 +10,6 @@ public class CertificateAuthority {
     private ServerSocket server;
     private RSA rsa;
 
-    public static void main(String[] args) {
-        System.out.println("CA starts.");
-
-        new CertificateAuthority();
-    }
-
     public CertificateAuthority() {
         try {
             rsa = new RSA();
@@ -23,13 +17,15 @@ public class CertificateAuthority {
 
             while (!server.isClosed()) {
                 Socket connection = server.accept();
-
+                Logg.getLogger().info("Got a connection request");
                 acceptConnection(connection);
 
             }
 
         } catch (IOException e) {
             e.printStackTrace();
+
+            Logg.getLogger().warning(e.getLocalizedMessage());
         }
 
     }
@@ -43,8 +39,12 @@ public class CertificateAuthority {
 
         String initialResponse = clientReader.readLine();
 
-        if (initialResponse.equals("Get Certificate"))
+        if (initialResponse.equals("Get Certificate")) {
+            Logg.getLogger().info("Got a Certificate Request");
             giveCertificate(clientReader, clientOut);
+            Logg.getLogger().info("Certificate sent");
+        }
+        Logg.getLogger().info("Public key sent");
 
         clientOut.println(RSA.ToEncoded(rsa.getPublicKey()));
 
@@ -70,6 +70,7 @@ public class CertificateAuthority {
         clientOut.flush();
 
         System.out.println("Certificate created: " + cert.toString());
+        Logg.getLogger().info("Certificate created: " + cert.toString());
 
     }
 

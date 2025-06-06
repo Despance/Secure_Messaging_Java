@@ -72,6 +72,8 @@ public class Certificate {
 
         }
 
+        Logg.getLogger().info("Certificate parsed from data " + toString());
+
     }
 
     public boolean checkSignature(PublicKey caKey) {
@@ -82,7 +84,11 @@ public class Certificate {
             sig.initVerify(caKey);
 
             sig.update(this.publicKey.getEncoded());
-            return sig.verify(Base64.getDecoder().decode(signature));
+            boolean result = sig.verify(Base64.getDecoder().decode(signature));
+
+            Logg.getLogger().info("certificate validation result : " + result);
+
+            return result;
 
         } catch (Exception e) {
             e.printStackTrace();

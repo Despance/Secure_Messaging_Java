@@ -1,7 +1,6 @@
 import java.io.BufferedReader;
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 import javax.crypto.Mac;
@@ -35,6 +34,17 @@ public class MessageHelper {
         this.ivReceive = ivReceive;
         this.output = output;
         this.input = input;
+
+        StringBuilder sb = new StringBuilder("AES specs initialized: ");
+        sb.append("aesKeySend=").append(Base64.getEncoder().encodeToString(aesKeySend)).append(", ");
+        sb.append("hmacKeySend=").append(Base64.getEncoder().encodeToString(hmacKeySend)).append(", ");
+        sb.append("aesKeyReceive=").append(Base64.getEncoder().encodeToString(aesKeyReceive)).append(", ");
+        sb.append("hmacKeyReceive=").append(Base64.getEncoder().encodeToString(hmacKeyReceive)).append(", ");
+        sb.append("ivSend=").append(Base64.getEncoder().encodeToString(ivSend)).append(", ");
+        sb.append("ivReceive=").append(Base64.getEncoder().encodeToString(ivReceive)).append(", ");
+        sb.append("sequenceNumberSend=").append(sequenceNumberSend).append(", ");
+        sb.append("sequenceNumberReceive=").append(sequenceNumberReceive);
+        Logg.getLogger().info(sb.toString());
     }
 
     public void updateKeys(byte[] aesKeySend, byte[] hmacKeySend, byte[] aesKeyReceive, byte[] hmacKeyReceive,
@@ -106,11 +116,15 @@ public class MessageHelper {
     public void sendMessage(String message, String fileName, MessageType type) {
         String messageWithHmac = createMessageForm(type, fileName, message, hmacKeySend);
         String encryptedMessage = aes.encrypt(messageWithHmac.getBytes(), aesKeySend, ivSend);
+
+        Logg.getLogger().info("sending messageWithHmac: " + messageWithHmac);
+        Logg.getLogger().info("sending encryptedMessage: " + encryptedMessage);
+
         output.println(encryptedMessage);
         output.flush();
 
         // if sending a new message(non ack)
-        if(!type.equals(MessageType.Ack)){
+        if (!type.equals(MessageType.Ack)) {
             // update sender iv and seq num
             sequenceNumberSend++;
             ivSend = xorIV(ivSend, sequenceNumberSend);
@@ -122,28 +136,33 @@ public class MessageHelper {
             String encryptedMessage = input.readLine();
             String decryptedMessage = aes.decrypt(encryptedMessage, aesKeyReceive, ivReceive);
 
+            Logg.getLogger().info("recieved encryptedMessage: " + encryptedMessage);
+            Logg.getLogger().info("recieved decryptedMessage: " + decryptedMessage);
+
             if (validateMessage(decryptedMessage, hmacKeyReceive)) {
                 MessageType type = getMessageType(decryptedMessage);
                 String content = getMessageContent(decryptedMessage);
 
-                if(!type.equals(MessageType.Ack)){
-                    // if received non ack message fron receiver, increment receiver seq num and receiver iv
+                if (!type.equals(MessageType.Ack)) {
+                    // if received non ack message fron receiver, increment receiver seq num and
+                    // receiver iv
                     sequenceNumberReceive++;
                     ivReceive = xorIV(ivReceive, sequenceNumberReceive);
                 }
                 // LOG ONLY
-                /*
-                 * if (type != MessageType.Ack)
-                 * System.out.println("Received message of type: " + type + " with content: " +
-                 * content);
-                 */
+
+                Logg.getLogger().info("Received message of type: " + type + " with content: " +
+                        content);
+
             } else {
                 System.out.println("Invalid message received.");
+                Logg.getLogger().warning("Invalid messaage recieved. - " + decryptedMessage);
             }
             return decryptedMessage;
 
         } catch (Exception e) {
             e.printStackTrace();
+            Logg.getLogger().warning(e.getLocalizedMessage());
         }
         return null;
     }
@@ -152,11 +171,9 @@ public class MessageHelper {
         byte[] seqNum = ByteBuffer.allocate(16).putLong(8, sequenceNumber).array();
         byte[] result = new byte[16];
         for (int i = 0; i < iv.length; i++) {
-            result[i] = (byte)(iv[i]^seqNum[i]);
+            result[i] = (byte) (iv[i] ^ seqNum[i]);
         }
         return result;
     }
-
-    
 
 }

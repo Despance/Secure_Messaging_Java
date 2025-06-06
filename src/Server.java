@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.PublicKey;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 
 public class Server {
@@ -37,14 +38,6 @@ public class Server {
 
     private final String downloadPath = "serverDownloads/";
 
-    public static void main(String[] args) {
-
-        System.out.println("Server starts.");
-
-        new Server("localhost");
-
-    }
-
     public Server(String CAIP) {
         this.CAIP = CAIP;
 
@@ -55,8 +48,11 @@ public class Server {
 
             this.certificate = getCertificate();
 
-            System.out.println(certificate.toString());
+            if (this.certificate != null) {
+                Logg.getLogger().info("My certificate:" + certificate.toString());
 
+                System.out.println("My Certificate is recieved from CA");
+            }
             secureSessionHello(server);
             // startCommunication();
         } catch (IOException e) {
@@ -94,7 +90,9 @@ public class Server {
         String initialResponse = clientReader.readLine();
 
         byte[] serverNonce = Common.generateNonce();
-        clientOut.println(certificate.toString() + "nonce: " + Base64.getEncoder().encodeToString(serverNonce));
+        String msg = certificate.toString() + "nonce: " + Base64.getEncoder().encodeToString(serverNonce);
+        Logg.getLogger().info(msg);
+        clientOut.println(msg);
         clientOut.flush();
 
         Certificate clientCertificateTemp = new Certificate(initialResponse);
@@ -113,6 +111,7 @@ public class Server {
         if (clientCertificateTemp.checkSignature(caPkey)) {
             clientCertificate = clientCertificateTemp;
             System.out.println("Client certificate is valid.");
+            Logg.getLogger().info("Client certificate recieved");
         } else
             System.out.println("Client certificate is fraud!!");
 
@@ -132,27 +131,9 @@ public class Server {
         System.out.println("Updating keys");
 
         keys = keyGenerationHelper.updateKeys();
+
         messageHelper.updateKeys(keys.serverKey, keys.serverMacKey, keys.clientKey, keys.clientMacKey, keys.serverIv,
                 keys.clientIv);
-    }
-
-    private void startCommunication() throws IOException {
-
-        // get client message
-        messageHelper.receiveMessage();
-        // send ack to client
-        String ackMessage = "ACK";
-        messageHelper.sendMessage(ackMessage, "ack.txt", MessageType.Ack);
-
-        updateKeys();
-
-        messageHelper.receiveMessage();
-        // send ack to client
-        messageHelper.sendMessage("ACK2", "ack2.txt", MessageType.Ack);
-
-        receiveMessage();
-        receiveMessage();
-        receiveMessage();
     }
 
     private File handleFileCreation(String fileName, byte[] content) {
@@ -215,11 +196,17 @@ public class Server {
         // if fileName is null, it means it's an text message without a file
         if (fileName.equals("null") || fileName.isEmpty()) {
             // send ack and return the content
-            messageHelper.sendMessage("ACK for message received at: " + LocalDateTime.now(), null, MessageType.Ack);
+            messageHelper.sendMessage(
+                    "ACK for message received at: "
+                            + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss")),
+                    null, MessageType.Ack);
             return messageHelper.getMessageContent(message);
         } else {
             // send ack with timestamp and fileName
-            messageHelper.sendMessage("ACK for file " + fileName + " received at: " + LocalDateTime.now(), null,
+            messageHelper.sendMessage(
+                    "ACK for file " + fileName + " received at: "
+                            + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss")),
+                    null,
                     MessageType.Ack);
             return handleFileCreation(fileName, Base64.getDecoder().decode(messageHelper.getMessageContent(message)));
         }

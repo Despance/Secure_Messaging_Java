@@ -2,6 +2,7 @@ import java.util.InputMismatchException;
 import java.util.Scanner;
 import java.io.File;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 public class App {
 
@@ -46,6 +47,7 @@ public class App {
 
     private static void handleClient() {
         System.out.println("Client Mode Starting...");
+        Logg.getLogger().info("Client Mode Starting...");
 
         System.out.println("Enter the server ip: ");
         String serverIP = scanner.next();
@@ -57,6 +59,10 @@ public class App {
             serverIP = "localhost";
         if (caIP.isBlank())
             caIP = "localhost";
+
+        Logg.getLogger().info("target serverip: " + serverIP);
+
+        Logg.getLogger().info("target caip: " + caIP);
 
         Client client = new Client(serverIP, caIP);
 
@@ -85,10 +91,14 @@ public class App {
                         System.out.println(ANSI_GREEN + "[System] " + (String) obj + ANSI_RESET);
                     else
                         System.out
-                                .println(ANSI_YELLOW + "[Server " + LocalTime.now() + "] " + (String) obj + ANSI_RESET);
+                                .println(ANSI_YELLOW + "[Server "
+                                        + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] "
+                                        + (String) obj + ANSI_RESET);
                 } else
                     System.out
-                            .println(ANSI_YELLOW + "[Server " + LocalTime.now() + "] Recieved file saved at location: "
+                            .println(ANSI_YELLOW + "[Server "
+                                    + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+                                    + "] Recieved file saved at location: "
                                     + ((File) obj).getAbsolutePath() + ANSI_RESET);
 
             }
@@ -100,12 +110,15 @@ public class App {
 
     private static void handleServer() {
         System.out.println("Server Mode Starting...");
+        Logg.getLogger().info("Server Mode Starting...");
 
         System.out.println("Enter the CA IP");
         String caIP = scanner.next();
 
         if (caIP.isBlank())
             caIP = "localhost";
+
+        Logg.getLogger().info("target caip: " + caIP);
 
         Server server = new Server(caIP);
 
@@ -131,10 +144,14 @@ public class App {
                         System.out.println(ANSI_GREEN + "[System] " + (String) obj + ANSI_RESET);
                     else
                         System.out
-                                .println(ANSI_YELLOW + "[Client " + LocalTime.now() + "] " + (String) obj + ANSI_RESET);
+                                .println(ANSI_YELLOW + "[Client "
+                                        + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] "
+                                        + (String) obj + ANSI_RESET);
                 } else
                     System.out
-                            .println(ANSI_YELLOW + "[Client " + LocalTime.now() + "] Recieved file saved at location: "
+                            .println(ANSI_YELLOW + "[Client "
+                                    + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+                                    + "] Recieved file saved at location: "
                                     + ((File) obj).getAbsolutePath() + ANSI_RESET);
 
             }
@@ -147,6 +164,8 @@ public class App {
 
     private static void handleCA() {
         System.out.println("CA Mode Starting...");
+        Logg.getLogger().info("CA Mode Starting...");
+
         new CertificateAuthority();
     }
 

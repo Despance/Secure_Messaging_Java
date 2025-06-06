@@ -24,3 +24,7 @@ replay_pid*
 # ignore downloads folder
 serverDownloads/
 clientDownloads/
+# ignore local send files to test
+send/
+
+.DS_Store

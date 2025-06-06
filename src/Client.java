@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.PublicKey;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 
 public class Client {
@@ -35,24 +36,20 @@ public class Client {
 
     private final String downloadPath = "clientDownloads/";
 
-    public static void main(String[] args) {
-        System.out.println("Client starts.");
-
-        new Client("localhost", "localhost");
-
-    }
-
     public Client(String serverIP, String CAIP) {
         this.CAIP = CAIP;
         this.serverIP = serverIP;
         rsa = new RSA();
         aes = new AES();
 
-        System.out.println("My private: " + rsa.getPrivateKey());
-        System.out.println("My public: " + rsa.getPublicKey());
-
         try {
             this.certificate = getCertificate();
+
+            if (this.certificate != null) {
+                Logg.getLogger().info("My certificate:" + certificate.toString());
+
+                System.out.println("My Certificate is recieved from CA");
+            }
 
             secureSessionHello();
             // startCommunication();
@@ -94,7 +91,6 @@ public class Client {
         serverOut.flush();
 
         String initialResponse = serverReader.readLine();
-        System.out.println("Server says: " + initialResponse);
 
         Certificate serverCertificateTemp = new Certificate(initialResponse);
         byte[] serverNonce = Common.getNonce(initialResponse);
@@ -113,6 +109,8 @@ public class Client {
         if (serverCertificateTemp.checkSignature(caPkey)) {
             serverCertificate = serverCertificateTemp;
             System.out.println("Server certificate is valid.");
+            Logg.getLogger().info("Client certificate recieved");
+
         } else
             System.out.println("Server certificate is fraud!!");
 
@@ -136,33 +134,6 @@ public class Client {
         keys = keyGenerationHelper.updateKeys();
         messageHelper.updateKeys(keys.clientKey, keys.clientMacKey, keys.serverKey, keys.serverMacKey, keys.clientIv,
                 keys.serverIv);
-
-    }
-
-    private void startCommunication() throws IOException {
-
-        // send message encrypted with AES to server
-        String tmpStr = "moin ik bims der client";
-        // send message
-        messageHelper.sendMessage(tmpStr, "hi.txt", MessageType.Text);
-        // receive ack from server
-        messageHelper.receiveMessage();
-
-        // update keys
-        updateKeys();
-
-        messageHelper.sendMessage("moin ik bims der client 2", "hi2.txt", MessageType.Text);
-        // receive ack from server
-        messageHelper.receiveMessage();
-
-        sendMessage("sending text without a file");
-        receiveMessage();
-
-        sendMessage("clientDownloads/hi.txt", MessageType.Text);
-        receiveMessage();
-
-        sendMessage("clientDownloads/miyabi.png", MessageType.Image);
-        receiveMessage();
 
     }
 
@@ -227,11 +198,17 @@ public class Client {
         // if fileName is null, it means it's an text message without a file
         if (fileName.equals("null") || fileName.isEmpty()) {
             // send ack and return the content
-            messageHelper.sendMessage("ACK for message received at: " + LocalDateTime.now(), null, MessageType.Ack);
+            messageHelper.sendMessage(
+                    "ACK for message received at: "
+                            + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss")),
+                    null, MessageType.Ack);
             return messageHelper.getMessageContent(message);
         } else {
             // send ack with timestamp and fileName
-            messageHelper.sendMessage("ACK for file " + fileName + " received at: " + LocalDateTime.now(), null,
+            messageHelper.sendMessage(
+                    "ACK for file " + fileName + " received at: "
+                            + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss")),
+                    null,
                     MessageType.Ack);
             return handleFileCreation(fileName, Base64.getDecoder().decode(messageHelper.getMessageContent(message)));
         }
