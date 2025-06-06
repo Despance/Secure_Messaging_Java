@@ -7,7 +7,6 @@ import java.util.Base64;
 public class Common {
 
     private static final SecureRandom secureRandom = new SecureRandom(); // thread-safe
-    private static final Base64.Encoder base64Encoder = Base64.getUrlEncoder().withoutPadding();
 
     public static final int PORT_NUMBER = 25561;
     public static final int CA_PORT = 25566;
@@ -30,22 +29,16 @@ public class Common {
         return Base64.getDecoder().decode(message.substring(message.indexOf("nonce: ") + 7));
     }
 
-    public static byte[] readFile(Path filePath){
+    public static byte[] readFile(Path filePath) throws IOException {
         byte[] content = null;
-        try{
-            content = Files.readAllBytes(filePath);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        content = Files.readAllBytes(filePath);
+
         return content;
     }
 
-    public static void writeFile(Path filePath, byte[] content) {
-        try {
-            Files.write(filePath, content);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public static void writeFile(Path filePath, byte[] content) throws IOException {
+        Files.write(filePath, content);
+
     }
 
 }

@@ -6,16 +6,16 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-
 public class AES {
-    
+
     private Cipher cipher;
 
-    // TODO: maybe add hmac(iv, master secret) to prevent iv reuse(pdf de yazmiyo galiba... gerek yok gibi yani)
-    public AES(){
+    // TODO: maybe add hmac(iv, master secret) to prevent iv reuse(pdf de yazmiyo
+    // galiba... gerek yok gibi yani)
+    public AES() {
         try {
             cipher = Cipher.getInstance("AES/CTR/NoPadding");
-            
+
         } catch (Exception e) {
             e.printStackTrace();
         }

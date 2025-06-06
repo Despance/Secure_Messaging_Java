@@ -8,7 +8,6 @@ import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.PublicKey;
-import java.sql.Date;
 import java.time.LocalDateTime;
 import java.util.Base64;
 
@@ -59,7 +58,7 @@ public class Server {
             System.out.println(certificate.toString());
 
             secureSessionHello(server);
-            startCommunication();
+            // startCommunication();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -191,10 +190,16 @@ public class Server {
 
     public void sendMessage(String filePath, MessageType type) {
         Path filePathObj = Paths.get(filePath);
-        byte[] content = Common.readFile(filePathObj);
+        byte[] content;
+        try {
+            content = Common.readFile(filePathObj);
+        } catch (IOException e) {
+            System.out.println(App.ANSI_RED + e.getLocalizedMessage() + " not found." + App.ANSI_RESET);
+            return;
+        }
         String fileName = filePathObj.getFileName().toString();
         String contentBase64 = Base64.getEncoder().encodeToString(content);
-        
+
         messageHelper.sendMessage(contentBase64, fileName, type);
     }
 
@@ -216,7 +221,7 @@ public class Server {
             // send ack with timestamp and fileName
             messageHelper.sendMessage("ACK for file " + fileName + " received at: " + LocalDateTime.now(), null,
                     MessageType.Ack);
-            return handleFileCreation(fileName, Base64.getDecoder().decode(messageHelper.getMessageContent(message)) );
+            return handleFileCreation(fileName, Base64.getDecoder().decode(messageHelper.getMessageContent(message)));
         }
     }
 }

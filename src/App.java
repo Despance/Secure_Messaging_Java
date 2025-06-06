@@ -63,7 +63,13 @@ public class App {
         Thread inputThread = new Thread(() -> {
             while (true) {
                 String input = scanner.nextLine();
-                client.sendMessage(input);
+
+                MessageType type = parseCommand(input);
+
+                if (type == MessageType.Text)
+                    client.sendMessage(input);
+                else
+                    client.sendMessage(input.substring(6), type);
 
             }
 
@@ -106,7 +112,12 @@ public class App {
         Thread inputThread = new Thread(() -> {
             while (true) {
                 String input = scanner.nextLine();
-                server.sendMessage(input);
+                MessageType type = parseCommand(input);
+
+                if (type == MessageType.Text)
+                    server.sendMessage(input);
+                else
+                    server.sendMessage(input.substring(6), type);
             }
 
         });
@@ -139,16 +150,15 @@ public class App {
         new CertificateAuthority();
     }
 
-    private static String parseCommand(String str) {
+    private static MessageType parseCommand(String str) {
 
         if (str.startsWith("image:")) {
-
+            return MessageType.Image;
         } else if (str.startsWith("video:")) {
+            return MessageType.Video;
+        } else
+            return MessageType.Text;
 
-        } else {
-        }
-
-        return null;
     }
 
 }
