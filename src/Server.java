@@ -154,7 +154,7 @@ public class Server {
         receiveMessage();
     }
 
-    private File handleFileCreation(String fileName, String content) {
+    private File handleFileCreation(String fileName, byte[] content) {
         try {
             // Ensure the download directory exists
             File downloadDir = new File(downloadPath);
@@ -162,9 +162,8 @@ public class Server {
                 downloadDir.mkdirs();
             }
             File file = new File(downloadPath + fileName);
-            PrintWriter printWriter = new PrintWriter(file);
-            printWriter.println(content);
-            printWriter.close();
+            Path filePath = Paths.get(file.getAbsolutePath());
+            Common.writeFile(filePath, content);
             return file;
         } catch (Exception e) {
             e.printStackTrace();
@@ -190,10 +189,11 @@ public class Server {
 
     public void sendMessage(String filePath, MessageType type) {
         Path filePathObj = Paths.get(filePath);
-        String content = Common.readFile(filePathObj);
+        byte[] content = Common.readFile(filePathObj);
         String fileName = filePathObj.getFileName().toString();
+        String contentBase64 = Base64.getEncoder().encodeToString(content);
         
-        messageHelper.sendMessage(content, fileName, type);
+        messageHelper.sendMessage(contentBase64, fileName, type);
     }
 
     public Object receiveMessage() {
@@ -214,7 +214,7 @@ public class Server {
             // send ack with timestamp and fileName
             messageHelper.sendMessage("ACK for file " + fileName + " received at: " + LocalDateTime.now(), null,
                     MessageType.Ack);
-            return handleFileCreation(fileName, messageHelper.getMessageContent(message));
+            return handleFileCreation(fileName, Base64.getDecoder().decode(messageHelper.getMessageContent(message)) );
         }
     }
 }

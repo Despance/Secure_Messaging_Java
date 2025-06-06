@@ -30,19 +30,19 @@ public class Common {
         return Base64.getDecoder().decode(message.substring(message.indexOf("nonce: ") + 7));
     }
 
-    public static String readFile(Path filePath){
-        String content = "";
+    public static byte[] readFile(Path filePath){
+        byte[] content = null;
         try{
-            content = new String(Files.readAllBytes(filePath));
+            content = Files.readAllBytes(filePath);
         } catch (IOException e) {
             e.printStackTrace();
         }
         return content;
     }
 
-    public static void writeFile(Path filePath, String content) {
+    public static void writeFile(Path filePath, byte[] content) {
         try {
-            Files.write(filePath, content.getBytes());
+            Files.write(filePath, content);
         } catch (IOException e) {
             e.printStackTrace();
         }

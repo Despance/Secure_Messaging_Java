@@ -170,7 +170,7 @@ public class Client {
 
     }
 
-    private File handleFileCreation(String fileName, String content) {
+    private File handleFileCreation(String fileName, byte[] content) {
         try {
             // Ensure the download directory exists
             File downloadDir = new File(downloadPath);
@@ -207,10 +207,10 @@ public class Client {
 
     public void sendMessage(String filePath, MessageType type) {
         Path filePathObj = Paths.get(filePath);
-        String content = Common.readFile(filePathObj);
+        byte[] content = Common.readFile(filePathObj);
         String fileName = filePathObj.getFileName().toString();
-
-        messageHelper.sendMessage(content, fileName, type);
+        String contentBase64 = Base64.getEncoder().encodeToString(content);
+        messageHelper.sendMessage(contentBase64, fileName, type);
         handleKeyUpdate();
 
     }
@@ -231,7 +231,7 @@ public class Client {
             // send ack with timestamp and fileName
             messageHelper.sendMessage("ACK for file " + fileName + " received at: " + LocalDateTime.now(), null,
                     MessageType.Ack);
-            return handleFileCreation(fileName, messageHelper.getMessageContent(message));
+            return handleFileCreation(fileName, Base64.getDecoder().decode(messageHelper.getMessageContent(message)) );
         }
 
     }
