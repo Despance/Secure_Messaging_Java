@@ -5,6 +5,8 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.PublicKey;
 import java.sql.Date;
 import java.time.LocalDateTime;
@@ -150,9 +152,11 @@ public class Server {
         messageHelper.sendMessage("ACK2", "ack2.txt", MessageType.Ack);
 
         receiveMessage();
+        receiveMessage();
+        receiveMessage();
     }
 
-    private File handleFileCreation(String fileName, String content) {
+    private File handleFileCreation(String fileName, byte[] content) {
         try {
             // Ensure the download directory exists
             File downloadDir = new File(downloadPath);
@@ -160,9 +164,8 @@ public class Server {
                 downloadDir.mkdirs();
             }
             File file = new File(downloadPath + fileName);
-            PrintWriter printWriter = new PrintWriter(file);
-            printWriter.println(content);
-            printWriter.close();
+            Path filePath = Paths.get(file.getAbsolutePath());
+            Common.writeFile(filePath, content);
             return file;
         } catch (Exception e) {
             e.printStackTrace();
@@ -186,8 +189,13 @@ public class Server {
         messageHelper.sendMessage(content, null, MessageType.Text);
     }
 
-    public void sendMessage(String content, String fileName, MessageType type) {
-        messageHelper.sendMessage(content, fileName, type);
+    public void sendMessage(String filePath, MessageType type) {
+        Path filePathObj = Paths.get(filePath);
+        byte[] content = Common.readFile(filePathObj);
+        String fileName = filePathObj.getFileName().toString();
+        String contentBase64 = Base64.getEncoder().encodeToString(content);
+        
+        messageHelper.sendMessage(contentBase64, fileName, type);
     }
 
     public Object receiveMessage() {
@@ -208,7 +216,7 @@ public class Server {
             // send ack with timestamp and fileName
             messageHelper.sendMessage("ACK for file " + fileName + " received at: " + LocalDateTime.now(), null,
                     MessageType.Ack);
-            return handleFileCreation(fileName, messageHelper.getMessageContent(message));
+            return handleFileCreation(fileName, Base64.getDecoder().decode(messageHelper.getMessageContent(message)) );
         }
     }
 }
