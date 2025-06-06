@@ -1,4 +1,3 @@
-import java.util.Date;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 import java.io.File;
@@ -138,6 +137,18 @@ public class App {
     private static void handleCA() {
         System.out.println("CA Mode Starting...");
         new CertificateAuthority();
+    }
+
+    private static String parseCommand(String str) {
+
+        if (str.startsWith("image:")) {
+
+        } else if (str.startsWith("video:")) {
+
+        } else {
+        }
+
+        return null;
     }
 
 }
