@@ -152,6 +152,8 @@ public class Server {
         messageHelper.sendMessage("ACK2", "ack2.txt", MessageType.Ack);
 
         receiveMessage();
+        receiveMessage();
+        receiveMessage();
     }
 
     private File handleFileCreation(String fileName, byte[] content) {
