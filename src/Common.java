@@ -1,3 +1,6 @@
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.Base64;
 
@@ -25,6 +28,24 @@ public class Common {
 
     public static byte[] getNonce(String message) {
         return Base64.getDecoder().decode(message.substring(message.indexOf("nonce: ") + 7));
+    }
+
+    public static byte[] readFile(Path filePath){
+        byte[] content = null;
+        try{
+            content = Files.readAllBytes(filePath);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return content;
+    }
+
+    public static void writeFile(Path filePath, byte[] content) {
+        try {
+            Files.write(filePath, content);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }
