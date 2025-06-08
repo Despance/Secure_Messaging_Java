@@ -55,6 +55,17 @@ public class MessageHelper {
         this.hmacKeyReceive = hmacKeyReceive;
         this.ivSend = ivSend;
         this.ivReceive = ivReceive;
+
+        StringBuilder sb = new StringBuilder("AES specs updated: ");
+        sb.append("aesKeySend=").append(Base64.getEncoder().encodeToString(aesKeySend)).append(", ");
+        sb.append("hmacKeySend=").append(Base64.getEncoder().encodeToString(hmacKeySend)).append(", ");
+        sb.append("aesKeyReceive=").append(Base64.getEncoder().encodeToString(aesKeyReceive)).append(", ");
+        sb.append("hmacKeyReceive=").append(Base64.getEncoder().encodeToString(hmacKeyReceive)).append(", ");
+        sb.append("ivSend=").append(Base64.getEncoder().encodeToString(ivSend)).append(", ");
+        sb.append("ivReceive=").append(Base64.getEncoder().encodeToString(ivReceive)).append(", ");
+        sb.append("sequenceNumberSend=").append(sequenceNumberSend).append(", ");
+        sb.append("sequenceNumberReceive=").append(sequenceNumberReceive);
+        Logg.getLogger().info(sb.toString());
     }
 
     public String CreateHMAC(String message, byte[] macKey) {

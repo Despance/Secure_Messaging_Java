@@ -20,7 +20,7 @@ public class Logg {
             SimpleDateFormat format = new SimpleDateFormat("M-d_HHmmss");
             try {
                 fh = new FileHandler(
-                        "newlog-" + format.format(Calendar.getInstance().getTime()) + ".log");
+                        "logs/newlog-" + format.format(Calendar.getInstance().getTime()) + ".log");
             } catch (Exception e) {
                 e.printStackTrace();
             }

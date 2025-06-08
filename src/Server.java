@@ -167,6 +167,7 @@ public class Server {
 
     public void sendMessage(String content) {
         messageHelper.sendMessage(content, null, MessageType.Text);
+        handleKeyUpdate();
     }
 
     public void sendMessage(String filePath, MessageType type) {
@@ -182,6 +183,7 @@ public class Server {
         String contentBase64 = Base64.getEncoder().encodeToString(content);
 
         messageHelper.sendMessage(contentBase64, fileName, type);
+        handleKeyUpdate();
     }
 
     public Object receiveMessage() {
