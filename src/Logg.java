@@ -1,3 +1,5 @@
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.logging.FileHandler;
@@ -9,6 +11,7 @@ public class Logg {
     private static Logger logger;
 
     private static FileHandler fh = null;
+    private static final String LOG_PATH = "logs/";
 
     public static Logger getLogger() {
 
@@ -19,6 +22,7 @@ public class Logg {
 
             SimpleDateFormat format = new SimpleDateFormat("M-d_HHmmss");
             try {
+                Files.createDirectories(Paths.get(LOG_PATH));
                 fh = new FileHandler(
                         "logs/newlog-" + format.format(Calendar.getInstance().getTime()) + ".log");
             } catch (Exception e) {
