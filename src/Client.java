@@ -195,6 +195,8 @@ public class Client {
         if (messageHelper.getMessageType(message) == MessageType.Ack) {
             return messageHelper.getMessageContent(message);
         }
+        // if not an ack message, handle key update
+        handleKeyUpdate();
         // if fileName is null, it means it's an text message without a file
         if (fileName.equals("null") || fileName.isEmpty()) {
             // send ack and return the content

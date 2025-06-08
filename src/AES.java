@@ -10,8 +10,7 @@ public class AES {
 
     private Cipher cipher;
 
-    // TODO: maybe add hmac(iv, master secret) to prevent iv reuse(pdf de yazmiyo
-    // galiba... gerek yok gibi yani)
+    // AES with CTR mode and key size of 256 bits and iv of 128 bits
     public AES() {
         try {
             cipher = Cipher.getInstance("AES/CTR/NoPadding");
