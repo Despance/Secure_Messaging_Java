@@ -24,6 +24,7 @@ replay_pid*
 # ignore downloads folder
 serverDownloads/
 clientDownloads/
+logs/
 # ignore local send files to test
 send/
 
